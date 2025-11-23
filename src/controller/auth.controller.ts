@@ -51,3 +51,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
     }
 }
+
+export const login = (req: Request, res: Response) => {
+
+}
