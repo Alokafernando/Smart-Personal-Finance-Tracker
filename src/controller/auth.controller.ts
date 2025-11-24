@@ -1,6 +1,7 @@
 import { Request, Response } from "express"
 import { UserRole, Status, User } from "../model/user.model"
 import bcrypt from "bcryptjs"
+import { signAccessToken, signRefreshToken } from "../utils/tokens"
 
 export const registerUser = async (req: Request, res: Response) => {
     try {
@@ -52,6 +53,34 @@ export const registerUser = async (req: Request, res: Response) => {
     }
 }
 
-export const login = (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response) => {
+    try {
+        const { email, password } = req.body
 
+        const existingUser = await User.findOne({ email })
+        if (!existingUser) {
+            return res.status(401).json({ message: "Invalid credentials" })
+        }
+
+
+        const valid = await bcrypt.compare(password as string, existingUser.password as string);
+        if (!valid) {
+            return res.status(401).json({ message: "Invalid credentials" })
+        }
+
+        const accessToken = signAccessToken(existingUser)
+        const refreshToken = signRefreshToken(existingUser)
+
+        res.status(200).json({
+            message: "success",
+            data: {
+                email: existingUser.email,
+                role: existingUser.role,
+                accessToken,
+                refreshToken
+            }
+        })
+    } catch (err: any) {
+        res.status(500).json({ message: err?.message })
+    }
 }
