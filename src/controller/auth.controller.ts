@@ -1,7 +1,8 @@
 import { Request, Response } from "express"
-import { UserRole, Status, User } from "../model/user.model"
+import { IUser, UserRole, Status, User } from "../model/user.model"
 import bcrypt from "bcryptjs"
 import { signAccessToken, signRefreshToken } from "../utils/tokens"
+import { AuthRequest } from "../middleware/auth"
 
 export const registerUser = async (req: Request, res: Response) => {
     try {
@@ -30,7 +31,8 @@ export const registerUser = async (req: Request, res: Response) => {
             email,
             password: hashedPassword,
             role: role,
-            approved: approvalStatus
+            approved: approvalStatus,
+            profileURL: req.body.profileURL || "-"
         })
 
         await newUser.save()
@@ -44,9 +46,11 @@ export const registerUser = async (req: Request, res: Response) => {
                 id: newUser._id,
                 email: newUser.email,
                 roles: newUser.role,
-                approved: newUser.approved
+                approved: newUser.approved,
+                profileURL: newUser.profileURL
             }
         })
+
     } catch (err: any) {
         res.status(500).json({ message: err?.message })
 
@@ -83,4 +87,29 @@ export const login = async (req: Request, res: Response) => {
     } catch (err: any) {
         res.status(500).json({ message: err?.message })
     }
+}
+
+export const getUserDetails = async (req: AuthRequest, res: Response) => {
+
+    if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" })
+    }
+
+    const userId = req.user.sub
+    const user =
+        ((await User.findById(userId).select("-password")) as IUser) || null
+
+    if (!user) {
+        return res.status(404).json({
+            message: "User not found"
+        })
+    }
+
+    const { username, profileURL, email, role, approved } = user
+
+    res.status(200).json({
+        message: "Ok",
+        data: { username, profileURL, email, role, approved }
+    })
+
 }

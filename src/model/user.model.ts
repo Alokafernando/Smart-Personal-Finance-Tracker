@@ -14,6 +14,7 @@ export enum Status {
 export interface IUser extends Document {
     _id: mongoose.Types.ObjectId
     username: String
+    profileURL: String
     email: String
     password: String
     role: UserRole[]
@@ -24,6 +25,7 @@ export interface IUser extends Document {
 const userScehema = new Schema<IUser>({
     username: { type: String, required: true },
     email: { type: String, unique: true, lowercase: true, required: true },
+    profileURL: { type: String },
     password: { type: String, required: true },
     role: {
         type: [String],
