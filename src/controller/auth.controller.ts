@@ -12,7 +12,7 @@ export const registerUser = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "All fields are required" });
         }
 
-        if (role !== UserRole.USER) {
+        if (role !== UserRole.USER) {   
             return res.status(400).json({ message: "Invalid role" });
         }
 
@@ -30,9 +30,9 @@ export const registerUser = async (req: Request, res: Response) => {
             username,
             email,
             password: hashedPassword,
-            role: role,
+            role: [role],
             approved: approvalStatus,
-            profileURL: req.body.profileURL || "-"
+            profileURL: req.body.profileURL
         })
 
         await newUser.save()
@@ -111,5 +111,56 @@ export const getUserDetails = async (req: AuthRequest, res: Response) => {
         message: "Ok",
         data: { username, profileURL, email, role, approved }
     })
+}
 
+
+export const registerAdmin = async (req: Request, res: Response) => {
+    try {
+        const { username, email, password, role } = req.body
+
+        if (!username || !email || !password) {
+            return res.status(400).json({ message: "All fields are required" });
+        }
+
+        if (role !== UserRole.ADMIN) {
+            return res.status(400).json({ message: "Invalid role" });
+        }
+
+
+        const existingUser = await User.findOne({ email })
+        if (existingUser) {
+            return res.status(400).json({ message: "Email already registered" })
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10)
+        const approvalStatus =
+            role === UserRole.ADMIN ? Status.PENDING : Status.APPROVED
+
+        const newAdmin = new User({
+            username,
+            email,
+            password: hashedPassword,
+            role: [role],
+            approved: approvalStatus,
+            profileURL: req.body.profileURL
+        })
+
+        await newAdmin.save()
+
+        res.status(201).json({
+            message:
+                role === UserRole.ADMIN
+                    ? "Admin registered successfully. waiting for approvel"
+                    : "Admin registered successfully",
+            data: {
+                id: newAdmin._id,
+                email: newAdmin.email,
+                role: newAdmin.role,
+                approved: newAdmin.approved,
+                profileURL: newAdmin.profileURL
+            }
+        })
+    } catch (err: any) {
+        res.status(500).json({ message: err?.message })
+    }
 }
