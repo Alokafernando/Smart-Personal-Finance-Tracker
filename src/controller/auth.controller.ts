@@ -12,7 +12,7 @@ export const registerUser = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "All fields are required" });
         }
 
-        if (role !== UserRole.USER) {   
+        if (role !== UserRole.USER) {
             return res.status(400).json({ message: "Invalid role" });
         }
 
@@ -66,6 +66,13 @@ export const login = async (req: Request, res: Response) => {
             return res.status(401).json({ message: "Invalid credentials" })
         }
 
+        // if (existingUser.approved === Status.PENDING) {
+        //     return res.status(403).json({ message: "User is pending approval" })
+        // }
+
+        if (existingUser.approved === Status.REJECTED) {
+            return res.status(403).json({ message: "User has been rejected and cannot log in" })
+        }
 
         const valid = await bcrypt.compare(password as string, existingUser.password as string);
         if (!valid) {
