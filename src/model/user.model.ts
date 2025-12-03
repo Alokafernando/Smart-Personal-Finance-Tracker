@@ -13,10 +13,10 @@ export enum Status {
 
 export interface IUser extends Document {
     _id: mongoose.Types.ObjectId
-    username: String
-    profileURL: String
-    email: String
-    password: String
+    username: string
+    profileURL: string
+    email: string
+    password: string
     role: UserRole[]
     approved: Status
 }

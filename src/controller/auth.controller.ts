@@ -9,11 +9,11 @@ export const registerUser = async (req: Request, res: Response) => {
         const { username, email, password, role } = req.body
 
         if (!username || !email || !password) {
-            return res.status(400).json({ message: "All fields are required" });
+            return res.status(400).json({ message: "All fields are required" })
         }
 
         if (role !== UserRole.USER) {
-            return res.status(400).json({ message: "Invalid role" });
+            return res.status(400).json({ message: "Invalid role" })
         }
 
         const existingUser = await User.findOne({ email })
@@ -74,7 +74,7 @@ export const login = async (req: Request, res: Response) => {
             return res.status(403).json({ message: "User has been rejected and cannot log in" })
         }
 
-        const valid = await bcrypt.compare(password as string, existingUser.password as string);
+        const valid = await bcrypt.compare(password as string, existingUser.password as string)
         if (!valid) {
             return res.status(401).json({ message: "Invalid credentials" })
         }
@@ -126,11 +126,11 @@ export const registerAdmin = async (req: Request, res: Response) => {
         const { username, email, password, role } = req.body
 
         if (!username || !email || !password) {
-            return res.status(400).json({ message: "All fields are required" });
+            return res.status(400).json({ message: "All fields are required" })
         }
 
         if (role !== UserRole.ADMIN) {
-            return res.status(400).json({ message: "Invalid role" });
+            return res.status(400).json({ message: "Invalid role" })
         }
 
 
@@ -170,4 +170,32 @@ export const registerAdmin = async (req: Request, res: Response) => {
     } catch (err: any) {
         res.status(500).json({ message: err?.message })
     }
+}
+
+export const changePassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const { currentPassword, newPassword } = req.body
+    const userId = req.user._id // from auth middleware
+
+    const user = await User.findById(userId)
+    if (!user) {
+      return res.status(404).json({ message: "User not found" })
+    }
+
+    // Check current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password)
+    if (!isMatch) {
+      return res.status(400).json({ message: "Current password is incorrect" })
+    }
+
+    // Hash new password
+    const hashed = await bcrypt.hash(newPassword, 10)
+    user.password = hashed
+
+    await user.save()
+
+    res.status(200).json({ message: "Password updated successfully" })
+  } catch (err: any) {
+    res.status(500).json({ message: err.message })
+  }
 }
