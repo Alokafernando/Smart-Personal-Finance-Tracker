@@ -116,7 +116,7 @@ export const getUserDetails = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({
         message: "Ok",
-        data: { username, profileURL, email, role, approved }
+        data: { userId, username, profileURL, email, role, approved }
     })
 }
 
