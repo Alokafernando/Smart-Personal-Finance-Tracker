@@ -87,6 +87,7 @@ export const login = async (req: Request, res: Response) => {
             data: {
                 email: existingUser.email,
                 role: existingUser.role,
+                profileURL: existingUser.profileURL,
                 accessToken,
                 refreshToken
             }
