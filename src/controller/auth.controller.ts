@@ -175,7 +175,8 @@ export const registerAdmin = async (req: Request, res: Response) => {
 export const changePassword = async (req: AuthRequest, res: Response) => {
   try {
     const { currentPassword, newPassword } = req.body
-    const userId = req.user._id // from auth middleware
+
+    const userId = req.user.sub // <- use sub or the correct JWT field
 
     const user = await User.findById(userId)
     if (!user) {
@@ -188,7 +189,6 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Current password is incorrect" })
     }
 
-    // Hash new password
     const hashed = await bcrypt.hash(newPassword, 10)
     user.password = hashed
 
