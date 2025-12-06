@@ -31,24 +31,23 @@ export const createCategory = async (req: AuthRequest, res: Response) => {
   }
 }
 
-
-// Get All Categories (Default + User)
+// Get All Categories 
 export const getCategories = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user._id
+        const userId = req.user.sub
 
         const categories = await Category.find({
             $or: [
-                { user_id: null },     // default categories
-                { user_id: userId },   // user-created categories
+                { user_id: userId },  // user-created categories
             ],
-        }).sort({ is_default: -1, name: 1 })
+        })
 
         return res.status(200).json({ categories })
     } catch (error) {
         return res.status(500).json({ message: "Server error", error })
     }
 }
+
 
 // Update Category
 export const updateCategory = async (req: AuthRequest, res: Response) => {
