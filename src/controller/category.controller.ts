@@ -15,7 +15,7 @@ export const createCategory = async (req: AuthRequest, res: Response) => {
         // }
         const existing = await Category.findOne({
             user_id: userId,
-            name: { $regex: `^${name.trim()}$`, $options: "i" } 
+            name: { $regex: `^${name.trim()}$`, $options: "i" }
         })
 
         if (existing) {
@@ -109,40 +109,42 @@ export const updateCategory = async (req: AuthRequest, res: Response) => {
 
 // Delete Category
 export const deleteCategory = async (req: AuthRequest, res: Response) => {
-    try {
-        const userId = req.user._id
-        const categoryId = req.params.id
+  try {
+    const userId = req.user.sub
+    const categoryId = req.params.id;
 
-        if (!mongoose.isValidObjectId(categoryId)) {
-            return res.status(400).json({ message: "Invalid category ID" })
-        }
-
-        const category = await Category.findById(categoryId)
-
-        if (!category) {
-            return res.status(404).json({ message: "Category not found" })
-        }
-
-        // Default categories CANNOT be deleted
-        if (category.is_default) {
-            return res.status(403).json({
-                message: "Default categories cannot be deleted",
-            })
-        }
-
-        // Only owner's category can be deleted
-        if (category.user_id?.toString() !== userId.toString()) {
-            return res.status(403).json({
-                message: "You do not have permission to delete this category",
-            })
-        }
-
-        await category.deleteOne()
-
-        return res.status(200).json({
-            message: "Category deleted successfully",
-        })
-    } catch (error) {
-        return res.status(500).json({ message: "Server error", error })
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" })
     }
-}
+
+    if (!mongoose.isValidObjectId(categoryId)) {
+      return res.status(400).json({ message: "Invalid category ID" })
+    }
+
+    const category = await Category.findById(categoryId) // find category
+
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    if (category.is_default) {
+      return res.status(403).json({ message: "Default categories cannot be deleted" });
+    }
+
+    if (!category.user_id) {
+      return res.status(403).json({ message: "Category does not belong to any user" });
+    }
+
+    if (category.user_id.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "You do not have permission to delete this category" })
+    }
+
+    await category.deleteOne() //delete category
+
+    return res.status(200).json({ message: "Category deleted successfully" })
+
+  } catch (err: any) {
+    console.error(err);
+    return res.status(500).json({ message: err.message || "Internal Server Error" })
+  }
+};
