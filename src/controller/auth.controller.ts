@@ -3,6 +3,8 @@ import { IUser, UserRole, Status, User } from "../model/user.model"
 import bcrypt from "bcryptjs"
 import { signAccessToken, signRefreshToken } from "../utils/tokens"
 import { AuthRequest } from "../middleware/auth"
+import { DEFAULT_CATEGORIES } from "../data/defaultCategories"
+import { Category } from "../model/category.model"
 
 export const registerUser = async (req: Request, res: Response) => {
     try {
@@ -36,6 +38,21 @@ export const registerUser = async (req: Request, res: Response) => {
         })
 
         await newUser.save()
+
+        const categoriesToInsert = DEFAULT_CATEGORIES.map(cat => ({
+    ...cat,
+    user_id: newUser._id, // <--- MUST match schema
+    is_default: true,
+    type: cat.type.toUpperCase() === "INCOME" ? "INCOME" : "EXPENSE"
+}));
+
+
+
+        try {
+            await Category.insertMany(categoriesToInsert);
+        } catch (err: any) {
+            console.warn("Default categories insertion failed:", err.message);
+        }
 
         res.status(201).json({
             message:
@@ -174,29 +191,29 @@ export const registerAdmin = async (req: Request, res: Response) => {
 }
 
 export const changePassword = async (req: AuthRequest, res: Response) => {
-  try {
-    const { currentPassword, newPassword } = req.body
+    try {
+        const { currentPassword, newPassword } = req.body
 
-    const userId = req.user.sub // <- use sub or the correct JWT field
+        const userId = req.user.sub // <- use sub or the correct JWT field
 
-    const user = await User.findById(userId)
-    if (!user) {
-      return res.status(404).json({ message: "User not found" })
+        const user = await User.findById(userId)
+        if (!user) {
+            return res.status(404).json({ message: "User not found" })
+        }
+
+        // Check current password
+        const isMatch = await bcrypt.compare(currentPassword, user.password)
+        if (!isMatch) {
+            return res.status(400).json({ message: "Current password is incorrect" })
+        }
+
+        const hashed = await bcrypt.hash(newPassword, 10)
+        user.password = hashed
+
+        await user.save()
+
+        res.status(200).json({ message: "Password updated successfully" })
+    } catch (err: any) {
+        res.status(500).json({ message: err.message })
     }
-
-    // Check current password
-    const isMatch = await bcrypt.compare(currentPassword, user.password)
-    if (!isMatch) {
-      return res.status(400).json({ message: "Current password is incorrect" })
-    }
-
-    const hashed = await bcrypt.hash(newPassword, 10)
-    user.password = hashed
-
-    await user.save()
-
-    res.status(200).json({ message: "Password updated successfully" })
-  } catch (err: any) {
-    res.status(500).json({ message: err.message })
-  }
 }
