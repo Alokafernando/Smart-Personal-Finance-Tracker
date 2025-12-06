@@ -5,30 +5,39 @@ import { AuthRequest } from "../middleware/auth"
 
 // Create Category
 export const createCategory = async (req: AuthRequest, res: Response) => {
-  try {
-    const { name, type, icon, color } = req.body
-    const userId = req.user.sub // from auth middleware
+    try {
+        const { name, type, icon, color } = req.body
+        const userId = req.user.sub // from auth middleware
 
-    const existing = await Category.findOne({ name: name.trim(), user_id: userId })
-    if (existing) {
-      return res.status(400).json({ message: `${name} Category already exists` })
+        // const existing = await Category.findOne({ name: name.trim(), user_id: userId })
+        // if (existing) {
+        //   return res.status(400).json({ message: `${name} Category already exists` })
+        // }
+        const existing = await Category.findOne({
+            user_id: userId,
+            name: { $regex: `^${name.trim()}$`, $options: "i" } 
+        })
+
+        if (existing) {
+            return res.status(400).json({ message: `${name} category already exists` })
+        }
+
+
+        const newCategory = new Category({
+            name: name.trim(),
+            type,
+            icon,
+            color,
+            user_id: userId,
+            is_default: false
+        })
+
+        await newCategory.save()
+
+        res.status(201).json({ message: "Category created successfully", data: newCategory })
+    } catch (err: any) {
+        res.status(500).json({ message: err.message })
     }
-
-    const newCategory = new Category({
-      name: name.trim(),
-      type,
-      icon,
-      color,
-      user_id: userId,
-      is_default: false
-    })
-
-    await newCategory.save()
-
-    res.status(201).json({ message: "Category created successfully", data: newCategory })
-  } catch (err: any) {
-    res.status(500).json({ message: err.message })
-  }
 }
 
 // Get All Categories 
