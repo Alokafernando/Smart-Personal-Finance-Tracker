@@ -5,35 +5,32 @@ import { AuthRequest } from "../middleware/auth"
 
 // Create Category
 export const createCategory = async (req: AuthRequest, res: Response) => {
-    try {
-        const userId = req.user._id
-        const { name, icon, color, type } = req.body
+  try {
+    const { name, type, icon, color } = req.body
+    const userId = req.user.sub // from auth middleware
 
-        if (!name || !type) {
-            return res.status(400).json({ message: "Name and type are required" })
-        }
-
-        if (!Object.values(CategoryType).includes(type)) {
-            return res.status(400).json({ message: "Invalid category type" })
-        }
-
-        const category = await Category.create({
-            user_id: userId,
-            name,
-            icon,
-            color,
-            type,
-            is_default: false,
-        })
-
-        return res.status(201).json({
-            message: "Category created successfully",
-            category,
-        })
-    } catch (error) {
-        return res.status(500).json({ message: "Server error", error })
+    const existing = await Category.findOne({ name: name.trim(), user_id: userId })
+    if (existing) {
+      return res.status(400).json({ message: `${name} Category already exists` })
     }
+
+    const newCategory = new Category({
+      name: name.trim(),
+      type,
+      icon,
+      color,
+      user_id: userId,
+      is_default: false
+    })
+
+    await newCategory.save()
+
+    res.status(201).json({ message: "Category created successfully", data: newCategory })
+  } catch (err: any) {
+    res.status(500).json({ message: err.message })
+  }
 }
+
 
 // Get All Categories (Default + User)
 export const getCategories = async (req: AuthRequest, res: Response) => {
