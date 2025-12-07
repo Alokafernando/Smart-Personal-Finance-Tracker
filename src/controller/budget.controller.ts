@@ -59,6 +59,55 @@ export const getBudgets = async (req: AuthRequest, res: Response) => {
   }
 }
 
+// Update a budget
+export const updateBudget = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user.sub
+    const budgetId = req.params.id
+    const { amount, month, year } = req.body
+
+    if (!mongoose.isValidObjectId(budgetId)) {
+      return res.status(400).json({ message: "Invalid budget ID" })
+    }
+
+    const budget = await Budget.findById(budgetId)
+
+    if (!budget) {
+      return res.status(404).json({ message: "Budget not found" })
+    }
+
+    if (budget.user_id.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Not authorized" })
+    }
+
+    const duplicate = await Budget.findOne({
+      _id: { $ne: budgetId },
+      user_id: userId,
+      category_id: budget.category_id,
+      month: month ?? budget.month,
+      year: year ?? budget.year,
+    })
+
+    if (duplicate) {
+      return res.status(400).json({
+        message: `Budget already exists for this category/${month}/${year}`
+      })
+    }
+
+    budget.amount = amount ?? budget.amount
+    budget.month = month ?? budget.month
+    budget.year = year ?? budget.year
+
+    await budget.save()
+
+    return res.status(200).json({
+      message: "Budget updated successfully",
+      data: budget,
+    })
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message })
+  }
+}
 
 // Delete a budget
 export const deleteBudget = async (req: AuthRequest, res: Response) => {
