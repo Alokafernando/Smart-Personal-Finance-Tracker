@@ -4,6 +4,7 @@ import cors from "cors"
 import authRouter from "./routes/auth.routes"
 import userRouter from "./routes/user.routes"
 import categoryRouter from "./routes/category.routes"
+import budgetRouter from "./routes/budget.routes"
 import mongoose from "mongoose"
 
 dotenv.config()
@@ -22,6 +23,7 @@ app.use(cors({
 app.use("/api/v1/auth", authRouter)
 app.use("/api/v1/user", userRouter)
 app.use("/api/v1/category", categoryRouter)
+app.use("/api/v1/budget", budgetRouter)
 
 
 
