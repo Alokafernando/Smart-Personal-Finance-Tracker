@@ -46,3 +46,16 @@ export const createBudget = async (req: AuthRequest, res: Response) => {
   }
 }
 
+// Get all budgets for a user
+export const getBudgets = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user.sub
+
+    const budgets = await Budget.find({ user_id: userId }).populate("category_id")//get all properties using id 
+
+    return res.status(200).json({ budgets })
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+

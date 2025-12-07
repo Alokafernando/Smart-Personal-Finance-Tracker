@@ -5,7 +5,7 @@ import { authenticate } from "../middleware/auth"
 const router = Router()
 
 router.post("/", authenticate, createBudget)
-// router.get("/", authenticate, getBudgets)
+router.get("/", authenticate, getBudgets)
 // router.put("/:id", authenticate, updateBudget)
 // router.delete("/:id", authenticate, deleteBudget)
 
