@@ -59,3 +59,33 @@ export const getBudgets = async (req: AuthRequest, res: Response) => {
   }
 }
 
+
+// Delete a budget
+export const deleteBudget = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user.sub
+    console.log("test", req.user.sub)
+    const budgetId = req.params.id
+
+    if (!mongoose.isValidObjectId(budgetId)) {
+      return res.status(400).json({ message: "Invalid budget ID" })
+    }
+
+    const budget = await Budget.findById(budgetId)
+
+    if (!budget) {
+      return res.status(404).json({ message: "Budget not found" })
+    }
+
+    if (budget.user_id.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Not authorized" })
+    }
+
+    await budget.deleteOne()
+
+    return res.status(200).json({ message: "Budget deleted successfully" })
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message })
+  }
+}
+

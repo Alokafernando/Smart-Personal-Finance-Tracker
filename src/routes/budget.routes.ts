@@ -7,6 +7,6 @@ const router = Router()
 router.post("/", authenticate, createBudget)
 router.get("/", authenticate, getBudgets)
 // router.put("/:id", authenticate, updateBudget)
-// router.delete("/:id", authenticate, deleteBudget)
+router.delete("/:id", authenticate, deleteBudget)
 
 export default router
