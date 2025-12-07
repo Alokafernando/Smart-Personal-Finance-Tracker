@@ -61,7 +61,7 @@ export const getCategories = async (req: AuthRequest, res: Response) => {
 // Update Category
 export const updateCategory = async (req: AuthRequest, res: Response) => {
     try {
-        const userId = req.user._id
+        const userId = req.user.sub
         const categoryId = req.params.id
         const { name, icon, color, type } = req.body
 
@@ -82,12 +82,12 @@ export const updateCategory = async (req: AuthRequest, res: Response) => {
             })
         }
 
-        // Only owner's category can be updated
-        if (category.user_id?.toString() !== userId.toString()) {
+        if (!category.user_id || !userId || category.user_id.toString() !== userId.toString()) {
             return res.status(403).json({
                 message: "You do not have permission to update this category",
             })
         }
+
 
         category.name = name ?? category.name
         category.icon = icon ?? category.icon
@@ -102,49 +102,49 @@ export const updateCategory = async (req: AuthRequest, res: Response) => {
             message: "Category updated successfully",
             category,
         })
-    } catch (error) {
-        return res.status(500).json({ message: "Server error", error })
+    } catch (err: any) {
+        return res.status(500).json({ message: err.message })
     }
 }
 
 // Delete Category
 export const deleteCategory = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user.sub
-    const categoryId = req.params.id;
+    try {
+        const userId = req.user.sub
+        const categoryId = req.params.id;
 
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" })
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" })
+        }
+
+        if (!mongoose.isValidObjectId(categoryId)) {
+            return res.status(400).json({ message: "Invalid category ID" })
+        }
+
+        const category = await Category.findById(categoryId) // find category
+
+        if (!category) {
+            return res.status(404).json({ message: "Category not found" });
+        }
+
+        if (category.is_default) {
+            return res.status(403).json({ message: "Default categories cannot be deleted" });
+        }
+
+        if (!category.user_id) {
+            return res.status(403).json({ message: "Category does not belong to any user" });
+        }
+
+        if (category.user_id.toString() !== userId.toString()) {
+            return res.status(403).json({ message: "You do not have permission to delete this category" })
+        }
+
+        await category.deleteOne() //delete category
+
+        return res.status(200).json({ message: "Category deleted successfully" })
+
+    } catch (err: any) {
+        console.error(err);
+        return res.status(500).json({ message: err.message || "Internal Server Error" })
     }
-
-    if (!mongoose.isValidObjectId(categoryId)) {
-      return res.status(400).json({ message: "Invalid category ID" })
-    }
-
-    const category = await Category.findById(categoryId) // find category
-
-    if (!category) {
-      return res.status(404).json({ message: "Category not found" });
-    }
-
-    if (category.is_default) {
-      return res.status(403).json({ message: "Default categories cannot be deleted" });
-    }
-
-    if (!category.user_id) {
-      return res.status(403).json({ message: "Category does not belong to any user" });
-    }
-
-    if (category.user_id.toString() !== userId.toString()) {
-      return res.status(403).json({ message: "You do not have permission to delete this category" })
-    }
-
-    await category.deleteOne() //delete category
-
-    return res.status(200).json({ message: "Category deleted successfully" })
-
-  } catch (err: any) {
-    console.error(err);
-    return res.status(500).json({ message: err.message || "Internal Server Error" })
-  }
 };
