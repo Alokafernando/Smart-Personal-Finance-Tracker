@@ -7,7 +7,7 @@ import { AuthRequest } from "../middleware/auth"
 export const createBudget = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user.sub
-    const { category_id, amount, month, year } = req.body
+    const { category_id, amount, month, year, spent } = req.body
 
     if (!category_id || !amount || !month || !year) {
       return res.status(400).json({ message: "All fields are required" })
@@ -32,6 +32,7 @@ export const createBudget = async (req: AuthRequest, res: Response) => {
       amount,
       month,
       year,
+      spent: spent ?? 0, // default 0
     })
 
     await budget.save()
@@ -51,7 +52,9 @@ export const getBudgets = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user.sub
 
-    const budgets = await Budget.find({ user_id: userId }).populate("category_id")//get all properties using id 
+    const budgets = await Budget.find({ user_id: userId }).populate(
+      "category_id"
+    )// populate category details
 
     return res.status(200).json({ budgets })
   } catch (err: any) {
@@ -64,7 +67,7 @@ export const updateBudget = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user.sub
     const budgetId = req.params.id
-    const { amount, month, year } = req.body
+    const { amount, month, year, spent } = req.body
 
     if (!mongoose.isValidObjectId(budgetId)) {
       return res.status(400).json({ message: "Invalid budget ID" })
@@ -90,13 +93,14 @@ export const updateBudget = async (req: AuthRequest, res: Response) => {
 
     if (duplicate) {
       return res.status(400).json({
-        message: `Budget already exists for this category/${month}/${year}`
+        message: `Budget already exists for this category/${month}/${year}`,
       })
     }
 
     budget.amount = amount ?? budget.amount
     budget.month = month ?? budget.month
     budget.year = year ?? budget.year
+    budget.spent = spent ?? budget.spent
 
     await budget.save()
 
@@ -113,7 +117,6 @@ export const updateBudget = async (req: AuthRequest, res: Response) => {
 export const deleteBudget = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user.sub
-    console.log("test", req.user.sub)
     const budgetId = req.params.id
 
     if (!mongoose.isValidObjectId(budgetId)) {
@@ -137,4 +140,3 @@ export const deleteBudget = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ message: err.message })
   }
 }
-
