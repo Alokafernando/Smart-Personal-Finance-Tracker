@@ -67,7 +67,7 @@ export const updateBudget = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user.sub
     const budgetId = req.params.id
-    const { amount, month, year, spent } = req.body
+    const { amount, month, year, spent, category_id } = req.body
 
     if (!mongoose.isValidObjectId(budgetId)) {
       return res.status(400).json({ message: "Invalid budget ID" })
@@ -83,20 +83,23 @@ export const updateBudget = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: "Not authorized" })
     }
 
+    // Duplicate check using new category_id
     const duplicate = await Budget.findOne({
       _id: { $ne: budgetId },
       user_id: userId,
-      category_id: budget.category_id,
+      category_id: category_id ?? budget.category_id,
       month: month ?? budget.month,
       year: year ?? budget.year,
     })
 
     if (duplicate) {
       return res.status(400).json({
-        message: `Budget already exists for this category/${month}/${year}`,
+        message: `Budget already exists for this category/${month ?? budget.month}/${year ?? budget.year}`,
       })
     }
 
+    // Update fields
+    budget.category_id = category_id ?? budget.category_id
     budget.amount = amount ?? budget.amount
     budget.month = month ?? budget.month
     budget.year = year ?? budget.year
