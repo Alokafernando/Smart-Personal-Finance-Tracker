@@ -121,8 +121,6 @@ export const updateTransaction = async (req: Request, res: Response) => {
 
         await transaction.save()
 
-        console.log(`Transaction ${transaction._id} updated. New type: ${transaction.type}`)
-
         return res.json({ message: "Transaction updated successfully", transaction })
     } catch (err) {
         console.error("Update Error:", err)
