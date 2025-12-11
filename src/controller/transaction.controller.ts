@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 import { Transaction } from "../model/transaction.model"
 import { AuthRequest } from "../middleware/auth"
 import { Category } from "../model/category.model"
+import mongoose from "mongoose"
 
 export const createTransaction = async (req: AuthRequest, res: Response) => {
     try {
@@ -94,15 +95,35 @@ export const getTransactions = async (req: Request, res: Response) => {
 export const updateTransaction = async (req: Request, res: Response) => {
     try {
         const { id } = req.params
+        const { category_id, amount, note, date } = req.body
 
-        const updated = await Transaction.findByIdAndUpdate(id, req.body, {
-            new: true,
-            runValidators: true
-        })
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: "Invalid transaction ID" })
+        }
 
-        if (!updated) return res.status(404).json({ message: "Transaction not found" })
+        const transaction = await Transaction.findById(id)
+        if (!transaction) {
+            return res.status(404).json({ message: "Transaction not found" })
+        }
 
-        return res.json(updated)
+        // If category_id is updated, get the new category type
+        if (category_id) {
+            const category = await Category.findById(category_id)
+            if (!category) return res.status(404).json({ message: "Category not found" })
+
+            transaction.category_id = category_id
+            transaction.type = category.type // <-- automatically update type
+        }
+
+        if (amount !== undefined) transaction.amount = amount
+        if (note !== undefined) transaction.note = note
+        if (date !== undefined) transaction.date = date
+
+        await transaction.save()
+
+        console.log(`Transaction ${transaction._id} updated. New type: ${transaction.type}`)
+
+        return res.json({ message: "Transaction updated successfully", transaction })
     } catch (err) {
         console.error("Update Error:", err)
         return res.status(500).json({ message: "Error updating transaction" })
