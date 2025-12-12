@@ -5,7 +5,6 @@ import authRouter from "./routes/auth.routes"
 import userRouter from "./routes/user.routes"
 import categoryRouter from "./routes/category.routes"
 import budgetRouter from "./routes/budget.routes"
-import faqRouter from "./routes/faq.routes"
 import transactionRouter from "./routes/transaction.routes"
 import mongoose from "mongoose"
 
@@ -26,7 +25,6 @@ app.use("/api/v1/auth", authRouter)
 app.use("/api/v1/user", userRouter)
 app.use("/api/v1/category", categoryRouter)
 app.use("/api/v1/budget", budgetRouter)
-app.use("/api/v1/ai", faqRouter)
 app.use("/api/v1/transactions", transactionRouter)
 
 
