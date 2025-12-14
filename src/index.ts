@@ -6,6 +6,8 @@ import userRouter from "./routes/user.routes"
 import categoryRouter from "./routes/category.routes"
 import budgetRouter from "./routes/budget.routes"
 import transactionRouter from "./routes/transaction.routes"
+import ocrRouter from "./routes/ocr.routes"
+import analyticsRoutes from "./routes/analytics.routes"
 import mongoose from "mongoose"
 
 dotenv.config()
@@ -25,8 +27,9 @@ app.use("/api/v1/auth", authRouter)
 app.use("/api/v1/user", userRouter)
 app.use("/api/v1/category", categoryRouter)
 app.use("/api/v1/budget", budgetRouter)
+app.use("/api/v1/ocr", ocrRouter)
 app.use("/api/v1/transactions", transactionRouter)
-
+app.use("/api/v1/analytics", analyticsRoutes)
 
 mongoose
 .connect(MONGO_URI)
