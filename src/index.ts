@@ -6,7 +6,6 @@ import userRouter from "./routes/user.routes"
 import categoryRouter from "./routes/category.routes"
 import budgetRouter from "./routes/budget.routes"
 import transactionRouter from "./routes/transaction.routes"
-import ocrRouter from "./routes/ocr.routes"
 import analyticsRoutes from "./routes/analytics.routes"
 import mongoose from "mongoose"
 
