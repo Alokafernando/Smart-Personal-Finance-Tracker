@@ -72,4 +72,48 @@ export const getMonthlyAnalytics = async (req: any, res: Response) => {
   }
 }
 
+export const getCategoryAnalytics = async (req: any, res: Response) => {
+  try {
+    const userId = req.user.sub
+
+    const data = await Transaction.aggregate([
+      {
+        $match: {
+          user_id: new mongoose.Types.ObjectId(userId),
+          type: "EXPENSE",
+        },
+      },
+      {
+        $lookup: {
+          from: "categories", // your collection name
+          localField: "category_id",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+      {
+        $unwind: {
+          path: "$category",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: "$category.name",
+          value: { $sum: "$amount" },
+        },
+      },
+      { $sort: { value: -1 } },
+    ])
+
+    res.json(
+      data.map(d => ({
+        name: d._id || "Unknown",
+        value: d.value,
+      }))
+    )
+  } catch (err) {
+    res.status(500).json({ message: "Category analytics failed", err })
+  }
+}
 
