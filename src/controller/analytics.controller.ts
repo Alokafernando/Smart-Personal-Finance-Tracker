@@ -37,3 +37,39 @@ export const getSummaryAnalytics = async (req: any, res: Response) => {
   }
 }
 
+export const getMonthlyAnalytics = async (req: any, res: Response) => {
+  try {
+    const userId = req.user.sub
+
+    const data = await Transaction.aggregate([
+      { $match: { user_id: new mongoose.Types.ObjectId(userId) } },
+      {
+        $group: {
+          _id: {
+            month: { $month: "$date" },
+            year: { $year: "$date" },
+            type: "$type",
+          },
+          total: { $sum: "$amount" },
+        },
+      },
+    ])
+
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    const map: any = {}
+
+    data.forEach(d => {
+      const m = months[d._id.month - 1]
+      if (!map[m]) map[m] = { month: m, income: 0, expense: 0 }
+
+      if (d._id.type === "INCOME") map[m].income = d.total
+      else map[m].expense = d.total
+    })
+
+    res.json(Object.values(map))
+  } catch (err) {
+    res.status(500).json({ message: "Monthly analytics failed", err })
+  }
+}
+
+
