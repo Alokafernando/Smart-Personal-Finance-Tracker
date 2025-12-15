@@ -56,7 +56,7 @@ export const getMonthlyAnalytics = async (req: any, res: Response) => {
       },
     ])
 
-    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     const map: any = {}
 
     data.forEach(d => {
@@ -86,7 +86,7 @@ export const getCategoryAnalytics = async (req: any, res: Response) => {
       },
       {
         $lookup: {
-          from: "categories", 
+          from: "categories",
           localField: "category_id",
           foreignField: "_id",
           as: "category",
@@ -188,34 +188,34 @@ export const getFilteredAnalyticsByMonthOrYear = async (req: AuthRequest, res: R
     }))
 
     const categoryData = await Transaction.aggregate([
-  {
-    $match: {
-      ...filter,
-      type: "EXPENSE",
-    },
-  },
-  {
-    $lookup: {
-      from: "categories",
-      localField: "category_id",
-      foreignField: "_id",
-      as: "category",
-    },
-  },
-  {
-    $unwind: {
-      path: "$category",
-      preserveNullAndEmptyArrays: true,
-    },
-  },
-  {
-    $group: {
-      _id: "$category.name",
-      value: { $sum: "$amount" },
-    },
-  },
-  { $sort: { value: -1 } },
-])
+      {
+        $match: {
+          ...filter,
+          type: "EXPENSE",
+        },
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category_id",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+      {
+        $unwind: {
+          path: "$category",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: "$category.name",
+          value: { $sum: "$amount" },
+        },
+      },
+      { $sort: { value: -1 } },
+    ])
 
     const formattedCategory = categoryData.map(d => ({
       name: d._id || "Other",
