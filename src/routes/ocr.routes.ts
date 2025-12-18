@@ -4,10 +4,6 @@ import { Router } from "express";
 
 const router = Router()
 
-router.post(
-  "/receipt",
-  upload.single("receipt"), // field name from frontend
-  processReceiptOCR
-);
+router.post( "/receipt", upload.single("receipt"),  processReceiptOCR)
 
 export default router

@@ -74,7 +74,6 @@ const determineCategory = async (text: string, userId: string) => {
   return { category, type }
 }
 
-/* ================= Controller ================= */
 
 export const processReceiptOCR = async (req: AuthRequest, res: any) => {
   try {
@@ -82,39 +81,26 @@ export const processReceiptOCR = async (req: AuthRequest, res: any) => {
       return res.status(400).json({ message: "No file uploaded" })
     }
 
-    // ✅ OCR directly from memory buffer
-    const ocr = await Tesseract.recognize(
-      req.file.buffer,
-      "eng"
-    )
-
+    const ocr = await Tesseract.recognize(req.file.buffer, "eng")
     const rawText = ocr?.data?.text?.trim()
-    if (!rawText) {
-      return res.status(500).json({ message: "OCR returned empty text" })
-    }
+    if (!rawText) return res.status(500).json({ message: "OCR returned empty text" })
 
     const userId = req.user?.sub
-
     const amount = extractAmount(rawText)
     const merchant = extractMerchant(rawText)
     const { category, type } = await determineCategory(rawText, userId)
 
-    const transaction = await Transaction.create({
-      user_id: new mongoose.Types.ObjectId(userId),
-      raw_text: rawText,
-      amount,
-      merchant,
-      date: new Date(),
-      type,
-      ai_category: category.name,
-      category_id: category._id
-    })
-
     res.json({
       message: "OCR successful",
-      transaction
+      transaction: {
+        merchant,
+        amount,
+        date: new Date().toISOString().split("T")[0],
+        ai_category: category.name,
+        category_id: category._id.toString(),
+        type
+      }
     })
-
   } catch (err: any) {
     console.error("Processing failed:", err)
     res.status(500).json({
@@ -123,3 +109,4 @@ export const processReceiptOCR = async (req: AuthRequest, res: any) => {
     })
   }
 }
+
