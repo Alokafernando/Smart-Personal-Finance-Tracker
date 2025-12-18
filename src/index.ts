@@ -7,6 +7,7 @@ import categoryRouter from "./routes/category.routes"
 import budgetRouter from "./routes/budget.routes"
 import transactionRouter from "./routes/transaction.routes"
 import analyticsRoutes from "./routes/analytics.routes"
+import ocrRoutes from "./routes/ocr.routes"
 import mongoose from "mongoose"
 
 dotenv.config()
@@ -28,6 +29,8 @@ app.use("/api/v1/category", categoryRouter)
 app.use("/api/v1/budget", budgetRouter)
 app.use("/api/v1/transactions", transactionRouter)
 app.use("/api/v1/analytics", analyticsRoutes)
+app.use("/api/v1/ocr", ocrRoutes)
+
 
 mongoose
 .connect(MONGO_URI)
