@@ -256,8 +256,6 @@ export const getLatestTransactions = async (req: AuthRequest, res: Response) => 
       .sort({ date: -1 })
       .limit(5)
 
-    console.log("Found transactions:", transactions)
-
     return res.status(200).json(transactions)
   } catch (error) {
     console.error("Error fetching latest transactions:", error)
