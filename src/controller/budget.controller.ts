@@ -143,3 +143,18 @@ export const deleteBudget = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ message: err.message })
   }
 }
+
+export const getLatestBudgets = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user.sub
+
+    const budgets = await Budget.find({ user_id: userId })
+      .populate("category_id") // include category details
+      .sort({ createdAt: -1 }) // latest first
+      .limit(5)
+
+    return res.status(200).json({ budgets })
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message })
+  }
+}
