@@ -307,30 +307,29 @@ export const exportAnalyticsPDF = async (req: AuthRequest, res: Response) => {
 
 export const getBalanceTrend = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user.sub
+    const userId = req.user.sub;
 
-    const transactions = await Transaction.find({ user_id: userId }).sort({ date: 1 })
+    const transactions = await Transaction.find({ user_id: userId }).sort({ date: 1 });
 
-    const monthlyIncome = Array(12).fill(0)
-    const monthlyExpense = Array(12).fill(0)
+    const monthlyIncome = Array(12).fill(0);
+    const monthlyExpense = Array(12).fill(0);
 
     transactions.forEach(t => {
-      const m = new Date(t.date).getMonth()
-      if (t.type === "INCOME") monthlyIncome[m] += t.amount
-      else monthlyExpense[m] += t.amount
-    })
+      const month = new Date(t.date).getMonth(); 
+      if (t.type === "INCOME") monthlyIncome[month] += t.amount;
+      else if (t.type === "EXPENSE") monthlyExpense[month] += t.amount;
+    });
 
-    let runningBalance = 0
-    const data = monthlyIncome.map((_, i) => {
-      runningBalance += monthlyIncome[i] - monthlyExpense[i]
-      return {
-        month: i + 1,
-        balance: runningBalance
-      }
-    })
+    const data = monthlyIncome.map((income, i) => ({
+      month: i + 1,
+      income,
+      expense: monthlyExpense[i],
+      balance: income - monthlyExpense[i], 
+    }));
 
-    res.json(data)
+    res.json(data);
   } catch (err: any) {
-    res.status(500).json({ message: err.message })
+    res.status(500).json({ message: err.message });
   }
-}
+};
+
