@@ -83,10 +83,10 @@ export const getTransactionById = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Invalid transaction ID" })
         }
 
-        const trx = await Transaction.findById(id)
-        if (!trx) return res.status(404).json({ message: "Transaction not found" })
+        const obj = await Transaction.findById(id)
+        if (!obj) return res.status(404).json({ message: "Transaction not found" })
 
-        return res.json(trx)
+        return res.json(obj)
     } catch (err) {
         return res.status(500).json({ message: "Error fetching transaction" })
     }
@@ -125,29 +125,27 @@ export const updateTransaction = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Invalid transaction ID" })
         }
 
-        const trx = await Transaction.findById(id)
-        if (!trx) return res.status(404).json({ message: "Transaction not found" })
+        const obj = await Transaction.findById(id)
+        if (!obj) return res.status(404).json({ message: "Transaction not found" })
 
-        const oldAmount = trx.amount
-        const oldCategory = trx.category_id
-        const oldDate = trx.date
+        const oldAmount = obj.amount
+        const oldCategory = obj.category_id
+        const oldDate = obj.date
 
-        if (category_id) trx.category_id = category_id
-        if (amount !== undefined) trx.amount = amount
-        if (note !== undefined) trx.note = note
-        if (date) trx.date = date
+        if (category_id) obj.category_id = category_id
+        if (amount !== undefined) obj.amount = amount
+        if (note !== undefined) obj.note = note
+        if (date) obj.date = date
 
-        await trx.save()
+        await obj.save()
 
-        /* -------- Budget recalculation -------- */
-        if (trx.type === "EXPENSE" || trx.type === "INCOME") {
+        if (obj.type === "EXPENSE" || obj.type === "INCOME") {
             const oldYM = getYearMonth(oldDate)
-            const newYM = getYearMonth(trx.date)
+            const newYM = getYearMonth(obj.date)
 
-            // Remove old spent
             await Budget.findOneAndUpdate(
                 {
-                    user_id: trx.user_id,
+                    user_id: obj.user_id,
                     category_id: oldCategory,
                     year: oldYM.year,
                     month: oldYM.month,
@@ -155,21 +153,20 @@ export const updateTransaction = async (req: Request, res: Response) => {
                 { $inc: { spent: -oldAmount } }
             )
 
-            // Add new spent
             await Budget.findOneAndUpdate(
                 {
-                    user_id: trx.user_id,
-                    category_id: trx.category_id,
+                    user_id: obj.user_id,
+                    category_id: obj.category_id,
                     year: newYM.year,
                     month: newYM.month,
                 },
-                { $inc: { spent: trx.amount } }
+                { $inc: { spent: obj.amount } }
             )
         }
 
         return res.json({
             message: "Transaction updated successfully",
-            transaction: trx,
+            transaction: obj,
         })
     } catch (err) {
         console.error("Update Error:", err)
@@ -185,24 +182,24 @@ export const deleteTransaction = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Invalid transaction ID" })
         }
 
-        const trx = await Transaction.findById(id)
-        if (!trx) return res.status(404).json({ message: "Transaction not found" })
+        const obj = await Transaction.findById(id)
+        if (!obj) return res.status(404).json({ message: "Transaction not found" })
 
-        if (trx.type === "EXPENSE" || trx.type === "INCOME") {
-            const { year, month } = getYearMonth(trx.date)
+        if (obj.type === "EXPENSE" || obj.type === "INCOME") {
+            const { year, month } = getYearMonth(obj.date)
 
             await Budget.findOneAndUpdate(
                 {
-                    user_id: trx.user_id,
-                    category_id: trx.category_id,
+                    user_id: obj.user_id,
+                    category_id: obj.category_id,
                     year,
                     month,
                 },
-                { $inc: { spent: -trx.amount } }
+                { $inc: { spent: -obj.amount } }
             )
         }
 
-        await trx.deleteOne()
+        await obj.deleteOne()
 
         return res.json({ message: "Transaction deleted successfully" })
     } catch (err) {
