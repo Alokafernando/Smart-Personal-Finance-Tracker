@@ -17,7 +17,7 @@ const COLORS = {
     softRed: "#FEE2E2",
     softBlue: "#DBEAFE",
     softOrange: "#FFEDD5",
-};
+}
 
 /* ================= SECTION TITLE ================= */
 const sectionTitle = (doc: PDFKit.PDFDocument, title: string, y?: number) => {
@@ -304,3 +304,33 @@ export const exportAnalyticsPDF = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: "PDF generation failed", err });
     }
 };
+
+export const getBalanceTrend = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user.sub
+
+    const transactions = await Transaction.find({ user_id: userId }).sort({ date: 1 })
+
+    const monthlyIncome = Array(12).fill(0)
+    const monthlyExpense = Array(12).fill(0)
+
+    transactions.forEach(t => {
+      const m = new Date(t.date).getMonth()
+      if (t.type === "INCOME") monthlyIncome[m] += t.amount
+      else monthlyExpense[m] += t.amount
+    })
+
+    let runningBalance = 0
+    const data = monthlyIncome.map((_, i) => {
+      runningBalance += monthlyIncome[i] - monthlyExpense[i]
+      return {
+        month: i + 1,
+        balance: runningBalance
+      }
+    })
+
+    res.json(data)
+  } catch (err: any) {
+    res.status(500).json({ message: err.message })
+  }
+}
