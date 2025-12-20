@@ -1,68 +1,77 @@
 import Tesseract from "tesseract.js"
 import mongoose from "mongoose"
-import { Transaction } from "../model/transaction.model"
 import { Category, CategoryType } from "../model/category.model"
 import { AuthRequest } from "../middleware/auth"
 import { DEFAULT_CATEGORIES } from "../data/defaultCategories"
 
-/* ================= Helper functions ================= */
+/* ================= HELPER FUNCTIONS ================= */
 
-const extractAmount = (text: string): number => {
+const extractAmount = (text: string): string => {
   const lines = text.split(/\r?\n/)
-  const numberRegex = /(\d+(?:,\d{3})*(?:\.\d{1,2})?)/
+  const moneyRegex = /(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)/
 
   for (const line of lines) {
     if (
-      /(total|grand total|amount due|net total|balance due|amount|lkr|rs\.?)/i.test(line) &&
-      !/subtotal/i.test(line)
+      /(transaction amount|amount|total|net total|balance due|lkr|rs\.?)/i.test(line) &&
+      !/invoice/i.test(line)
     ) {
-      const match = line.match(numberRegex)
-      if (match) return parseFloat(match[1].replace(/,/g, ""))
+      const match = line.match(moneyRegex)
+      if (match) return parseFloat(match[1].replace(/,/g, "")).toFixed(2)
     }
   }
 
-  const allNumbers = [...text.matchAll(/\d+(?:,\d{3})*(?:\.\d{1,2})?/g)]
+  const allNumbers = [...text.matchAll(/\d+(?:,\d{1,3})*(?:\.\d{1,2})?/g)]
+    .map((m) => m[0])
+    .filter((n) => n.length <= 9)
+
   if (allNumbers.length) {
-    return Math.max(...allNumbers.map(m => parseFloat(m[0].replace(/,/g, ""))))
+    const max = Math.max(...allNumbers.map((n) => parseFloat(n.replace(/,/g, ""))))
+    return max.toFixed(2)
   }
 
-  return 0
+  return "0.00"
 }
 
 const extractMerchant = (text: string): string =>
-  text.split("\n")[0]?.trim() || "Unknown"
+  text.split(/\r?\n/)[0]?.trim() || "Unknown"
+
+/* ================= CATEGORY DETECTION ================= */
 
 const determineCategory = async (text: string, userId: string) => {
   const lower = text.toLowerCase()
-  let ai_category = "Uncategorized"
+  let categoryName = "Uncategorized"
 
   for (const cat of DEFAULT_CATEGORIES) {
     if (lower.includes(cat.name.toLowerCase())) {
-      ai_category = cat.name
+      categoryName = cat.name
       break
     }
   }
 
-  if (ai_category === "Uncategorized") {
-    if (/salary|payroll|income/.test(lower)) ai_category = "Salary"
-    else if (/investment|dividend|stock|bond/.test(lower)) ai_category = "Investments"
-    else if (/business|invoice|service/.test(lower)) ai_category = "Business"
-    else if (/food|cafe|restaurant|coffee|meal|drink/.test(lower)) ai_category = "Food"
-    else if (/shop|mall|clothes|shopping/.test(lower)) ai_category = "Shopping"
-    else if (/fuel|gas|petrol|diesel/.test(lower)) ai_category = "Fuel"
-    else if (/bill|utility|electric|water|internet/.test(lower)) ai_category = "Bills"
-    else if (/entertainment|movie|cinema|theater|concert/.test(lower)) ai_category = "Entertainment"
+  if (categoryName === "Uncategorized") {
+    if (/salary|payroll|income/.test(lower)) categoryName = "Salary"
+    else if (/investment|dividend|stock|bond/.test(lower)) categoryName = "Investments"
+    else if (/business|invoice|service/.test(lower)) categoryName = "Business"
+    else if (/food|cafe|restaurant|coffee|meal|drink/.test(lower)) categoryName = "Food"
+    else if (/shop|mall|clothes|shopping/.test(lower)) categoryName = "Shopping"
+    else if (/fuel|gas|petrol|diesel/.test(lower)) categoryName = "Fuel"
+    else if (/bill|utility|electric|water|internet/.test(lower)) categoryName = "Bills"
+    else if (/entertainment|movie|cinema|theater|concert/.test(lower)) categoryName = "Entertainment"
   }
 
   const type: CategoryType =
-    ["Salary", "Business", "Investments"].includes(ai_category)
+    ["Salary", "Business", "Investments"].includes(categoryName)
       ? CategoryType.INCOME
       : CategoryType.EXPENSE
 
-  let category = await Category.findOne({ name: ai_category, user_id: userId })
+  let category = await Category.findOne({
+    name: categoryName,
+    user_id: userId
+  })
+
   if (!category) {
     category = await Category.create({
-      name: ai_category,
+      name: categoryName,
       type,
       icon: "📁",
       color: "#6366f1",
@@ -74,24 +83,29 @@ const determineCategory = async (text: string, userId: string) => {
   return { category, type }
 }
 
+/* ================= MAIN CONTROLLER ================= */
 
 export const processReceiptOCR = async (req: AuthRequest, res: any) => {
   try {
-    if (!req.file || !req.file.buffer) {
+    const userId = req.user?.sub
+
+    if (!req.file?.buffer) {
       return res.status(400).json({ message: "No file uploaded" })
     }
 
     const ocr = await Tesseract.recognize(req.file.buffer, "eng")
     const rawText = ocr?.data?.text?.trim()
-    if (!rawText) return res.status(500).json({ message: "OCR returned empty text" })
 
-    const userId = req.user?.sub
+    if (!rawText) {
+      return res.status(500).json({ message: "OCR returned empty text" })
+    }
+
     const amount = extractAmount(rawText)
     const merchant = extractMerchant(rawText)
     const { category, type } = await determineCategory(rawText, userId)
 
-    res.json({
-      message: "OCR successful",
+    return res.json({
+      message: "OCR processed successfully",
       transaction: {
         merchant,
         amount,
@@ -103,10 +117,9 @@ export const processReceiptOCR = async (req: AuthRequest, res: any) => {
     })
   } catch (err: any) {
     console.error("Processing failed:", err)
-    res.status(500).json({
+    return res.status(500).json({
       message: "OCR failed",
       error: err?.message || err
     })
   }
 }
-
