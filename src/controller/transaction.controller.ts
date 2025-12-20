@@ -210,3 +210,20 @@ export const deleteTransaction = async (req: Request, res: Response) => {
         return res.status(500).json({ message: "Error deleting transaction" })
     }
 }
+
+export const getLatestTransactions = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.sub
+
+    const transactions = await Transaction.find({ user_id: userId })
+      .sort({ date: -1 })
+      .limit(5)
+
+    console.log("Found transactions:", transactions)
+
+    return res.status(200).json(transactions)
+  } catch (error) {
+    console.error("Error fetching latest transactions:", error)
+    return res.status(500).json({ message: "Server error" })
+  }
+}
