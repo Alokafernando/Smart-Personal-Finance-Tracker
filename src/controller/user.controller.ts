@@ -111,3 +111,29 @@ export const updateProfileImage = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Failed to upload profile image" })
   }
 }
+
+export const updateUserStatus = async (req: AuthRequest, res: Response) => {
+  const userId = req.user.sub
+  const { status } = req.body
+
+  if (!["PENDING", "APPROVED", "REJECTED"].includes(status)) {
+    return res.status(400).json({ message: "Invalid status value" })
+  }
+
+  try {
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { approved: status }, 
+      { new: true }
+    )
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" })
+    }
+
+    return res.json({ message: "Status updated successfully", user })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ message: "Failed to update user status" })
+  }
+}
