@@ -5,6 +5,7 @@ import { signAccessToken, signRefreshToken } from "../utils/tokens"
 import { AuthRequest } from "../middleware/auth"
 import { DEFAULT_CATEGORIES } from "../data/defaultCategories"
 import { Category } from "../model/category.model"
+import { sendEmail } from "../config/mail"
 
 export const registerUser = async (req: Request, res: Response) => {
     try {
@@ -40,19 +41,37 @@ export const registerUser = async (req: Request, res: Response) => {
         await newUser.save()
 
         const categoriesToInsert = DEFAULT_CATEGORIES.map(cat => ({
-    ...cat,
-    user_id: newUser._id, // <--- MUST match schema
-    is_default: true,
-    type: cat.type.toUpperCase() === "INCOME" ? "INCOME" : "EXPENSE"
-}));
-
-
+            ...cat,
+            user_id: newUser._id,
+            is_default: true,
+            type: cat.type.toUpperCase() === "INCOME" ? "INCOME" : "EXPENSE"
+        }))
 
         try {
-            await Category.insertMany(categoriesToInsert);
+            await Category.insertMany(categoriesToInsert)
         } catch (err: any) {
-            console.warn("Default categories insertion failed:", err.message);
+            console.warn("Default categories insertion failed:", err.message)
         }
+
+        if (role === UserRole.USER) {
+            const emailMessage = `Hello ${username},
+
+Thank you for registering with Smart Finance Tracker! 🎉
+
+Your account has been successfully created and is currently under review. Please allow up to 24 hours for approval. Once approved, you’ll be able to access all features of the application.
+
+We appreciate your patience and are excited to have you on board!
+
+Best regards,
+The Smart Finance Team`
+
+            await sendEmail(
+                email,
+                "Registration Received - Smart Finance Tracker",
+                emailMessage
+            )
+        }
+
 
         res.status(201).json({
             message:
