@@ -5,9 +5,12 @@ import { AuthRequest } from "../middleware/auth"
 import { Transaction } from "../model/transaction.model"
 
 
-export const getAllUsers = async (req: Request, res: Response) => {
+export const getAllUsers = async (req: AuthRequest, res: Response) => {
   try {
-    const users = await User.find().select("-password") // hide password
+    const loggedInUserId = req.user.sub
+
+    const users = await User.find({ _id: { $ne: loggedInUserId } })
+      .select("-password") // hide password
 
     if (users.length === 0) {
       return res.status(404).json({ message: "No users found" })
