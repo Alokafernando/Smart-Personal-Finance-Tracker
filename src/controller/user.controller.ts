@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 import { Status, User } from "../model/user.model"
 import cloudinary from "../config/cloudinary"
 import { AuthRequest } from "../middleware/auth"
+import { Transaction } from "../model/transaction.model"
 
 
 export const getAllUsers = async (req: Request, res: Response) => {
@@ -137,5 +138,34 @@ export const updateUserStatus = async (req: AuthRequest, res: Response) => {
   } catch (err) {
     console.error(err)
     return res.status(500).json({ message: "Failed to update user status" })
+  }
+}
+
+export const getUserTransactionCounts = async (req: Request, res: Response) => {
+  try {
+    const transactions = await Transaction.find()
+      .populate("user_id", "name")
+      .exec()
+
+    const counts: Record<string, any> = {}
+
+    transactions.forEach(tx => {
+      const user = tx.user_id
+      if (!user) return
+
+      const uid = user._id.toString()
+      if (!counts[uid]) {
+        counts[uid] = {
+          userId: uid,
+          transactionCount: 0,
+        }
+      }
+      counts[uid].transactionCount += 1
+    })
+
+    res.status(200).json({ success: true, data: Object.values(counts) })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ success: false, message: "Server Error" })
   }
 }
