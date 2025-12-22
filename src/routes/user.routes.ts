@@ -14,7 +14,7 @@ router.get("/:id", authenticate, requireRole(ADMIN), getUserById) // GET /api/v1
 router.put("/:id", authenticate, updateUser) // PUT /api/v1/user/:id — admin: update user
 router.delete( "/:id", authenticate, requireRole(ADMIN), deleteUser) // DELETE /api/v1/user/:id — admin: delete user
 router.put("/profile/image", authenticate, upload.single("image"), updateProfileImage)
-router.put("/:id/status", authenticate, requireRole(ADMIN), updateUserStatus);
+router.put("/:id/status", authenticate, requireRole(ADMIN), updateUserStatus)
 
 
 

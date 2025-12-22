@@ -113,7 +113,7 @@ export const updateProfileImage = async (req: AuthRequest, res: Response) => {
 }
 
 export const updateUserStatus = async (req: AuthRequest, res: Response) => {
-  const userId = req.user.sub
+  const userId = req.params.id
   const { status } = req.body
 
   const validStatuses = ["PENDING", "APPROVED", "REJECTED"]
