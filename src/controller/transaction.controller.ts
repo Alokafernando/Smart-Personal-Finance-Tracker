@@ -247,19 +247,118 @@ export const getAllTransactions = async (req: Request, res: Response) => {
     const limit = 10
     const skip = (page - 1) * limit
 
-    const total = await Transaction.countDocuments()
+    const searchUser = (req.query.searchUser as string) || ""
+    const filterType = (req.query.filterType as string) || "ALL"
+    const fromDate = req.query.fromDate as string
+    const toDate = req.query.toDate as string
 
-    const transactions = await Transaction.find()
-      .sort({ date: -1 }) // latest first
+    const query: any = {}
+
+    // Type filter
+    if (filterType !== "ALL") {
+      query.type = filterType
+    }
+
+    // Date filter
+    if (fromDate || toDate) {
+      query.date = {}
+      if (fromDate) query.date.$gte = new Date(fromDate)
+      if (toDate) query.date.$lte = new Date(toDate)
+    }
+
+    // User search (username/email)
+    if (searchUser) {
+      // Since user info is in another collection, we can use aggregation for filtering
+      const total = await Transaction.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "user_id",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: "$user" },
+        {
+          $match: {
+            ...query,
+            $or: [
+              { "user.username": { $regex: searchUser, $options: "i" } },
+              { "user.email": { $regex: searchUser, $options: "i" } },
+            ],
+          },
+        },
+        { $count: "total" },
+      ])
+
+      const totalCount = total[0]?.total || 0
+
+      const transactions = await Transaction.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "user_id",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: "$user" },
+        {
+          $lookup: {
+            from: "categories",
+            localField: "category_id",
+            foreignField: "_id",
+            as: "category",
+          },
+        },
+        { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            ...query,
+            $or: [
+              { "user.username": { $regex: searchUser, $options: "i" } },
+              { "user.email": { $regex: searchUser, $options: "i" } },
+            ],
+          },
+        },
+        { $sort: { date: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+      ])
+
+      const formattedTransactions = transactions.map(tx => ({
+        ...tx,
+        user: tx.user || { username: "Unknown", email: "Unknown" },
+        category: tx.category || { name: "Uncategorized", type: "UNKNOWN" },
+      }))
+
+      return res.status(200).json({
+        success: true,
+        page,
+        totalPages: Math.ceil(totalCount / limit),
+        totalTransactions: totalCount,
+        transactions: formattedTransactions,
+      })
+    }
+
+    // ================= If no user search =================
+    const total = await Transaction.countDocuments(query)
+
+    const transactions = await Transaction.find(query)
+      .sort({ date: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("user_id", "username email") // <-- populate user_id
+      .populate("user_id", "username email")
+      .populate("category_id", "name type")
 
-    // Map transactions to include `user` instead of `user_id` for frontend
-    const formattedTransactions = transactions.map(tx => ({
-      ...tx.toObject(),
-      user: tx.user_id || { username: "Unknown", email: "Unknown" },
-    }))
+    const formattedTransactions = transactions.map(tx => {
+      const obj = tx.toObject()
+      return {
+        ...obj,
+        user: obj.user_id || { username: "Unknown", email: "Unknown" },
+        category: obj.category_id || { name: "Uncategorized", type: "UNKNOWN" },
+      }
+    })
 
     res.status(200).json({
       success: true,
