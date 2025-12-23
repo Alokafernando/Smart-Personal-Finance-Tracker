@@ -93,44 +93,55 @@ export const getTransactionById = async (req: Request, res: Response) => {
 }
 
 export const getTransactions = async (req: AuthRequest, res: Response) => {
-    try {
-        const user_id = req.user.sub
-        const { category_id, type, startDate, endDate, page } = req.query
+  try {
+    const user_id = req.user.sub
+    const { category_id, type, startDate, endDate, page, search } = req.query
 
-        const filter: any = {}
+    const filter: any = {}
 
-        if (user_id) filter.user_id = user_id
-        if (category_id) filter.category_id = category_id
-        if (type) filter.type = type
+    // Basic filters
+    if (user_id) filter.user_id = user_id
+    if (category_id) filter.category_id = category_id
+    if (type) filter.type = type
 
-        if (startDate || endDate) {
-            filter.date = {}
-            if (startDate) filter.date.$gte = new Date(startDate as string)
-            if (endDate) filter.date.$lte = new Date(endDate as string)
-        }
-
-        const pageNumber = parseInt(page as string) || 1
-        const pageSize = 10
-        const skip = (pageNumber - 1) * pageSize
-
-        const transactions = await Transaction.find(filter)
-            .sort({ date: -1 })
-            .skip(skip)
-            .limit(pageSize)
-
-        const total = await Transaction.countDocuments(filter)
-
-        return res.status(200).json({
-            page: pageNumber,
-            pageSize,
-            total,
-            totalPages: Math.ceil(total / pageSize),
-            transactions,
-        })
-    } catch (err) {
-        console.error("Get Transactions Error:", err)
-        return res.status(500).json({ message: "Error fetching transactions" })
+    if (startDate || endDate) {
+      filter.date = {}
+      if (startDate) filter.date.$gte = new Date(startDate as string)
+      if (endDate) filter.date.$lte = new Date(endDate as string)
     }
+
+    // Text search filter
+    if (search && typeof search === "string") {
+      const searchRegex = new RegExp(search, "i") // case-insensitive
+      filter.$or = [
+        { merchant: { $regex: searchRegex } },
+        { note: { $regex: searchRegex } },
+      ]
+    }
+
+    // Pagination
+    const pageNumber = parseInt(page as string) || 1
+    const pageSize = 10
+    const skip = (pageNumber - 1) * pageSize
+
+    const transactions = await Transaction.find(filter)
+      .sort({ date: -1 })
+      .skip(skip)
+      .limit(pageSize)
+
+    const total = await Transaction.countDocuments(filter)
+
+    return res.status(200).json({
+      page: pageNumber,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+      transactions,
+    })
+  } catch (err) {
+    console.error("Get Transactions Error:", err)
+    return res.status(500).json({ message: "Error fetching transactions" })
+  }
 }
 
 
