@@ -240,3 +240,36 @@ export const getLatestTransactions = async (req: AuthRequest, res: Response) => 
         return res.status(500).json({ message: "Server error" })
     }
 }
+
+export const getAllTransactions = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1 // default page 1
+    const limit = 10
+    const skip = (page - 1) * limit
+
+    const total = await Transaction.countDocuments()
+
+    const transactions = await Transaction.find()
+      .sort({ date: -1 }) // latest first
+      .skip(skip)
+      .limit(limit)
+      .populate("user_id", "username email") // <-- populate user_id
+
+    // Map transactions to include `user` instead of `user_id` for frontend
+    const formattedTransactions = transactions.map(tx => ({
+      ...tx.toObject(),
+      user: tx.user_id || { username: "Unknown", email: "Unknown" },
+    }))
+
+    res.status(200).json({
+      success: true,
+      page,
+      totalPages: Math.ceil(total / limit),
+      totalTransactions: total,
+      transactions: formattedTransactions,
+    })
+  } catch (error) {
+    console.error("Error fetching transactions:", error)
+    res.status(500).json({ success: false, message: "Failed to fetch transactions" })
+  }
+}
