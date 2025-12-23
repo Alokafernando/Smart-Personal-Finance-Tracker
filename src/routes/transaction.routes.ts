@@ -9,7 +9,7 @@ const router = Router()
 router.post("/", authenticate, createTransaction)
 router.get("/", authenticate, getTransactions) //user's
 router.put("/:id", authenticate, updateTransaction)
-router.delete("/:id", authenticate, deleteTransaction)
+router.delete("/:id", authenticate, requireRole([UserRole.ADMIN]), deleteTransaction)
 router.get("/latest", authenticate, getLatestTransactions)
 router.get("/all", authenticate, requireRole([UserRole.ADMIN]), getAllTransactions)
 
