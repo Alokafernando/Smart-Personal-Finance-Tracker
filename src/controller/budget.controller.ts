@@ -158,3 +158,136 @@ export const getLatestBudgets = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ message: err.message })
   }
 }
+
+export const getAllBudgets = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1
+    const limit = 10
+    const skip = (page - 1) * limit
+
+    const searchUser = (req.query.searchUser as string) || ""
+    const categoryFilter = (req.query.category as string) || "ALL"
+    const statusFilter = (req.query.status as string) || "ALL" // OVER / OK / ALL
+
+    const query: any = {}
+
+    // ================= Category filter =================
+    if (categoryFilter !== "ALL") {
+      query.category_id = categoryFilter
+    }
+
+    // ================= User search =================
+    let totalCount = 0
+    let usersBudgets: any[] = []
+
+    if (searchUser) {
+      // Use aggregation to filter by username/email
+      const totalAgg = await Budget.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "user_id",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: "$user" },
+        {
+          $match: {
+            ...query,
+            $or: [
+              { "user.username": { $regex: searchUser, $options: "i" } },
+              { "user.email": { $regex: searchUser, $options: "i" } },
+            ],
+          },
+        },
+        { $count: "total" },
+      ])
+      totalCount = totalAgg[0]?.total || 0
+
+      // Get paginated budgets with user and category populated
+      const budgetsAgg = await Budget.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "user_id",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: "$user" },
+        {
+          $lookup: {
+            from: "categories",
+            localField: "category_id",
+            foreignField: "_id",
+            as: "category",
+          },
+        },
+        { $unwind: "$category" },
+        {
+          $match: {
+            ...query,
+            $or: [
+              { "user.username": { $regex: searchUser, $options: "i" } },
+              { "user.email": { $regex: searchUser, $options: "i" } },
+            ],
+          },
+        },
+        { $sort: { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+      ])
+
+      usersBudgets = budgetsAgg
+    } else {
+      // ================= No user search =================
+      totalCount = await Budget.countDocuments(query)
+
+      usersBudgets = await Budget.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("user_id", "username email")
+        .populate("category_id", "name")
+    }
+
+    // ================= Format response grouped by user =================
+    const usersMap: Record<string, any> = {}
+    usersBudgets.forEach((b) => {
+      const userId = b.user_id._id.toString()
+      const isOver = b.spent > b.amount
+
+      // Status filter
+      if (statusFilter === "OVER" && !isOver) return
+      if (statusFilter === "OK" && isOver) return
+
+      if (!usersMap[userId]) {
+        usersMap[userId] = {
+          userId,
+          username: b.user_id.username,
+          email: b.user_id.email,
+          budgets: [],
+        }
+      }
+      usersMap[userId].budgets.push({
+        category: b.category_id.name,
+        limit: b.amount,
+        spent: b.spent,
+      })
+    })
+
+    const users = Object.values(usersMap)
+
+    res.status(200).json({
+      success: true,
+      page,
+      totalPages: Math.ceil(totalCount / limit),
+      totalBudgets: totalCount,
+      users,
+    })
+  } catch (error) {
+    console.error("Error fetching budgets:", error)
+    res.status(500).json({ success: false, message: "Failed to fetch budgets" })
+  }
+}
