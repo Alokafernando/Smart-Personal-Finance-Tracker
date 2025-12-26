@@ -2,6 +2,7 @@ import { Request, Response } from "express"
 import mongoose from "mongoose"
 import { Transaction } from "../model/transaction.model"
 import { AuthRequest } from "../middleware/auth"
+import { User } from "../model/user.model"
 
 export const getSummaryAnalytics = async (req: any, res: Response) => {
   try {
@@ -344,5 +345,67 @@ export const getTopCategories = async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error(err)
     res.status(500).json({ message: err.message })
+  }
+}
+
+export const getUsersSummary = async (req: Request, res: Response) => {
+  try {
+    const now = new Date()
+
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+
+    // ❌ Exclude ADMIN
+    const userFilter = { role: { $ne: "ADMIN" } }
+
+    // Total users (NON-ADMIN)
+    const totalUsers = await User.countDocuments(userFilter)
+
+    // New users this month (NON-ADMIN)
+    const newUsers = await User.countDocuments({
+      ...userFilter,
+      createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+    })
+
+    // Active users = users who have at least 1 transaction AND are not ADMIN
+    const activeUsersAgg = await Transaction.aggregate([
+      {
+        $lookup: {
+          from: "users",
+          localField: "user_id",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+      {
+        $match: {
+          "user.role": { $ne: "ADMIN" },
+        },
+      },
+      {
+        $group: {
+          _id: "$user._id",
+        },
+      },
+      {
+        $count: "count",
+      },
+    ])
+
+    const activeUsers = activeUsersAgg[0]?.count || 0
+
+    res.status(200).json({
+      success: true,
+      totalUsers,
+      newUsers,
+      activeUsers,
+    })
+  } catch (error: any) {
+    console.error("Users Summary Error:", error)
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch users summary",
+    })
   }
 }
