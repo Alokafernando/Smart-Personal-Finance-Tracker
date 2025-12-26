@@ -7,89 +7,91 @@ import { AuthRequest } from "../middleware/auth"
 
 
 const getYearMonth = (date: Date | string) => {
-    const d = new Date(date)
-    return {
-        year: d.getFullYear(),
-        month: d.getMonth() + 1,
-    }
+  const d = new Date(date)
+  return {
+    year: d.getFullYear(),
+    month: d.getMonth() + 1,
+  }
 }
 
 export const createTransaction = async (req: AuthRequest, res: Response) => {
-    try {
-        const { category_id, amount, date, type, note, merchant, raw_text, ai_category } = req.body
-        const userId = req.user?.sub
+  try {
+    const { category_id, amount, date, type, note, merchant, raw_text, ai_category } = req.body
+    const userId = req.user?.sub
 
-        if (!userId) {
-            return res.status(401).json({ message: "Unauthorized" })
-        }
-
-        if (!category_id || !amount || !date || !type) {
-            return res.status(400).json({ message: "Missing required fields" })
-        }
-
-        const category = await Category.findOne({
-            _id: category_id,
-            $or: [{ user_id: userId }, { is_default: true }],
-        })
-
-        if (!category) {
-            return res.status(404).json({ message: "Category not found" })
-        }
-
-        const transaction = await Transaction.create({
-            user_id: userId,
-            category_id,
-            amount,
-            date,
-            type,
-            note,
-            merchant,
-            raw_text,
-            ai_category,
-        })
-
-        /* -------- Budget update  -------- */
-        if (type === "EXPENSE" || type === "INCOME") {
-            const { year, month } = getYearMonth(date)
-
-            await Budget.findOneAndUpdate(
-                {
-                    user_id: new mongoose.Types.ObjectId(userId),
-                    category_id: new mongoose.Types.ObjectId(category_id),
-                    year,
-                    month,
-                },
-                {
-                    $inc: { spent: amount },
-                }
-            )
-        }
-
-        return res.status(201).json({
-            message: "Transaction created successfully",
-            transaction,
-        })
-    } catch (err: any) {
-        console.error("Create Transaction Error:", err)
-        return res.status(500).json({ message: err.message || "Server error" })
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" })
     }
+
+    if (!category_id || !amount || !date || !type) {
+      return res.status(400).json({ message: "Missing required fields" })
+    }
+
+    const category = await Category.findOne({
+      _id: category_id,
+      $or: [{ user_id: userId }, { is_default: true }],
+    })
+
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" })
+    }
+
+    const transaction = await Transaction.create({
+      user_id: userId,
+      category_id,
+      amount,
+      date,
+      type,
+      note,
+      merchant,
+      raw_text,
+      ai_category,
+    })
+
+    /* -------- Budget update  -------- */
+    if (type === "EXPENSE" || type === "INCOME") {
+      const { year, month } = getYearMonth(date)
+      const numericAmount = Number(amount)
+
+      // Only update if budget exists
+      const budget = await Budget.findOne({
+        user_id: new mongoose.Types.ObjectId(userId),
+        category_id: new mongoose.Types.ObjectId(category_id),
+        year,
+        month,
+      })
+
+      if (budget) {
+        budget.spent += numericAmount
+        await budget.save()
+      }
+    }
+
+    return res.status(201).json({
+      message: "Transaction created successfully",
+      transaction,
+    })
+  } catch (err: any) {
+    console.error("Create Transaction Error:", err)
+    return res.status(500).json({ message: err.message || "Server error" })
+  }
 }
 
 export const getTransactionById = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params
+  try {
+    const { id } = req.params
 
-        if (!mongoose.isValidObjectId(id)) {
-            return res.status(400).json({ message: "Invalid transaction ID" })
-        }
-
-        const obj = await Transaction.findById(id)
-        if (!obj) return res.status(404).json({ message: "Transaction not found" })
-
-        return res.json(obj)
-    } catch (err) {
-        return res.status(500).json({ message: "Error fetching transaction" })
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid transaction ID" })
     }
+
+    const obj = await Transaction.findById(id)
+    if (!obj) return res.status(404).json({ message: "Transaction not found" })
+
+    return res.json(obj)
+  } catch (err) {
+    return res.status(500).json({ message: "Error fetching transaction" })
+  }
 }
 
 export const getTransactions = async (req: AuthRequest, res: Response) => {
@@ -146,110 +148,110 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
 
 
 export const updateTransaction = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params
-        const { category_id, amount, note, date } = req.body
+  try {
+    const { id } = req.params
+    const { category_id, amount, note, date } = req.body
 
-        if (!mongoose.isValidObjectId(id)) {
-            return res.status(400).json({ message: "Invalid transaction ID" })
-        }
-
-        const obj = await Transaction.findById(id)
-        if (!obj) return res.status(404).json({ message: "Transaction not found" })
-
-        const oldAmount = obj.amount
-        const oldCategory = obj.category_id
-        const oldDate = obj.date
-
-        if (category_id) obj.category_id = category_id
-        if (amount !== undefined) obj.amount = amount
-        if (note !== undefined) obj.note = note
-        if (date) obj.date = date
-
-        await obj.save()
-
-        if (obj.type === "EXPENSE" || obj.type === "INCOME") {
-            const oldYM = getYearMonth(oldDate)
-            const newYM = getYearMonth(obj.date)
-
-            await Budget.findOneAndUpdate(
-                {
-                    user_id: obj.user_id,
-                    category_id: oldCategory,
-                    year: oldYM.year,
-                    month: oldYM.month,
-                },
-                { $inc: { spent: -oldAmount } }
-            )
-
-            await Budget.findOneAndUpdate(
-                {
-                    user_id: obj.user_id,
-                    category_id: obj.category_id,
-                    year: newYM.year,
-                    month: newYM.month,
-                },
-                { $inc: { spent: obj.amount } }
-            )
-        }
-
-        return res.json({
-            message: "Transaction updated successfully",
-            transaction: obj,
-        })
-    } catch (err) {
-        console.error("Update Error:", err)
-        return res.status(500).json({ message: "Error updating transaction" })
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid transaction ID" })
     }
+
+    const obj = await Transaction.findById(id)
+    if (!obj) return res.status(404).json({ message: "Transaction not found" })
+
+    const oldAmount = obj.amount
+    const oldCategory = obj.category_id
+    const oldDate = obj.date
+
+    if (category_id) obj.category_id = category_id
+    if (amount !== undefined) obj.amount = amount
+    if (note !== undefined) obj.note = note
+    if (date) obj.date = date
+
+    await obj.save()
+
+    if (obj.type === "EXPENSE" || obj.type === "INCOME") {
+      const oldYM = getYearMonth(oldDate)
+      const newYM = getYearMonth(obj.date)
+
+      await Budget.findOneAndUpdate(
+        {
+          user_id: obj.user_id,
+          category_id: oldCategory,
+          year: oldYM.year,
+          month: oldYM.month,
+        },
+        { $inc: { spent: -oldAmount } }
+      )
+
+      await Budget.findOneAndUpdate(
+        {
+          user_id: obj.user_id,
+          category_id: obj.category_id,
+          year: newYM.year,
+          month: newYM.month,
+        },
+        { $inc: { spent: obj.amount } }
+      )
+    }
+
+    return res.json({
+      message: "Transaction updated successfully",
+      transaction: obj,
+    })
+  } catch (err) {
+    console.error("Update Error:", err)
+    return res.status(500).json({ message: "Error updating transaction" })
+  }
 }
 
 export const deleteTransaction = async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params
+  try {
+    const { id } = req.params
 
-        if (!mongoose.isValidObjectId(id)) {
-            return res.status(400).json({ message: "Invalid transaction ID" })
-        }
-
-        const obj = await Transaction.findById(id)
-        if (!obj) return res.status(404).json({ message: "Transaction not found" })
-
-        if (obj.type === "EXPENSE" || obj.type === "INCOME") {
-            const { year, month } = getYearMonth(obj.date)
-
-            await Budget.findOneAndUpdate(
-                {
-                    user_id: obj.user_id,
-                    category_id: obj.category_id,
-                    year,
-                    month,
-                },
-                { $inc: { spent: -obj.amount } }
-            )
-        }
-
-        await obj.deleteOne()
-
-        return res.json({ message: "Transaction deleted successfully" })
-    } catch (err) {
-        console.error("Delete Error:", err)
-        return res.status(500).json({ message: "Error deleting transaction" })
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid transaction ID" })
     }
+
+    const obj = await Transaction.findById(id)
+    if (!obj) return res.status(404).json({ message: "Transaction not found" })
+
+    if (obj.type === "EXPENSE" || obj.type === "INCOME") {
+      const { year, month } = getYearMonth(obj.date)
+
+      await Budget.findOneAndUpdate(
+        {
+          user_id: obj.user_id,
+          category_id: obj.category_id,
+          year,
+          month,
+        },
+        { $inc: { spent: -obj.amount } }
+      )
+    }
+
+    await obj.deleteOne()
+
+    return res.json({ message: "Transaction deleted successfully" })
+  } catch (err) {
+    console.error("Delete Error:", err)
+    return res.status(500).json({ message: "Error deleting transaction" })
+  }
 }
 
 export const getLatestTransactions = async (req: AuthRequest, res: Response) => {
-    try {
-        const userId = req.user?.sub
+  try {
+    const userId = req.user?.sub
 
-        const transactions = await Transaction.find({ user_id: userId })
-            .sort({ date: -1 })
-            .limit(5)
+    const transactions = await Transaction.find({ user_id: userId })
+      .sort({ date: -1 })
+      .limit(5)
 
-        return res.status(200).json(transactions)
-    } catch (error) {
-        console.error("Error fetching latest transactions:", error)
-        return res.status(500).json({ message: "Server error" })
-    }
+    return res.status(200).json(transactions)
+  } catch (error) {
+    console.error("Error fetching latest transactions:", error)
+    return res.status(500).json({ message: "Server error" })
+  }
 }
 
 export const getAllTransactions = async (req: Request, res: Response) => {
