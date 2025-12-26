@@ -234,7 +234,7 @@ export const getFilteredAnalyticsByMonthOrYear = async (req: AuthRequest, res: R
 
 //===================== admin ==========================
 
-export const getAnalyticsSummary = async (req: Request, res: Response) => {
+export const getAnalyticsSummaryForAdmin = async (req: Request, res: Response) => {
   try {
     const aggregation = await Transaction.aggregate([
       {
@@ -262,6 +262,44 @@ export const getAnalyticsSummary = async (req: Request, res: Response) => {
     })
   } catch (err: any) {
     console.error("Analytics Summary Error:", err)
+    res.status(500).json({ message: err.message })
+  }
+}
+
+export const getMonthlyAnalyticsForAdmin = async (req: Request, res: Response) => {
+  try {
+    const monthlySummary = await Transaction.aggregate([
+      {
+        $group: {
+          _id: { year: { $year: "$date" }, month: { $month: "$date" } },
+          totalIncome: {
+            $sum: { $cond: [{ $eq: ["$type", "INCOME"] }, "$amount", 0] },
+          },
+          totalExpense: {
+            $sum: { $cond: [{ $eq: ["$type", "EXPENSE"] }, "$amount", 0] },
+          },
+        },
+      },
+      {
+        $sort: { "_id.year": 1, "_id.month": 1 },
+      },
+      {
+        $project: {
+          year: "$_id.year",
+          month: "$_id.month",
+          totalIncome: 1,
+          totalExpense: 1,
+          netBalance: { $subtract: ["$totalIncome", "$totalExpense"] },
+          _id: 0,
+        },
+      },
+    ])
+
+    res.status(200).json({
+      data: monthlySummary,
+    })
+  } catch (err: any) {
+    console.error("Monthly Analytics Error:", err)
     res.status(500).json({ message: err.message })
   }
 }
