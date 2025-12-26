@@ -303,3 +303,46 @@ export const getMonthlyAnalyticsForAdmin = async (req: Request, res: Response) =
     res.status(500).json({ message: err.message })
   }
 }
+
+export const getTopCategories = async (req: Request, res: Response) => {
+  try {
+    const type = (req.query.type as string) || "EXPENSE" // default EXPENSE
+    const limit = parseInt(req.query.limit as string) || 5
+
+    const topCategories = await Transaction.aggregate([
+      { $match: { type } },
+      {
+        $group: {
+          _id: "$category_id",
+          totalAmount: { $sum: "$amount" },
+        },
+      },
+      { $sort: { totalAmount: -1 } },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "_id",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+      { $unwind: "$category" },
+      {
+        $project: {
+          categoryId: "$category._id",
+          name: "$category.name",
+          totalAmount: 1,
+          _id: 0,
+        },
+      },
+    ])
+
+    res.status(200).json({
+      data: topCategories,
+    })
+  } catch (err: any) {
+    console.error(err)
+    res.status(500).json({ message: err.message })
+  }
+}

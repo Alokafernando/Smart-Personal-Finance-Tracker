@@ -1,5 +1,5 @@
 import express from "express"
-import { getSummaryAnalytics, getMonthlyAnalytics, getCategoryAnalytics, getFilteredAnalyticsByMonthOrYear, getAnalyticsSummaryForAdmin, getMonthlyAnalyticsForAdmin, } from "../controller/analytics.controller"
+import { getSummaryAnalytics, getMonthlyAnalytics, getCategoryAnalytics, getFilteredAnalyticsByMonthOrYear, getAnalyticsSummaryForAdmin, getMonthlyAnalyticsForAdmin, getTopCategories, } from "../controller/analytics.controller"
 import { authenticate } from "../middleware/auth"
 import { exportAnalyticsPDF, getBalanceTrend } from "../controller/analytics.export.controller"
 import { requireRole } from "../middleware/role"
@@ -17,6 +17,6 @@ router.get("/balance-trend", authenticate, getBalanceTrend)
 //admin
 router.get("/admin/summary", authenticate, requireRole([UserRole.ADMIN]), getAnalyticsSummaryForAdmin)
 router.get("/admin/monthly", authenticate, requireRole([UserRole.ADMIN]), getMonthlyAnalyticsForAdmin)
-
+router.get("/admin/top-categories", authenticate, requireRole([UserRole.ADMIN]), getTopCategories )
 
 export default router
