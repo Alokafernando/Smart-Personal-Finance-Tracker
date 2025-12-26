@@ -395,26 +395,25 @@ export const getAnalyticsSummary = async (req: Request, res: Response) => {
           totalAmount: { $sum: "$amount" },
         },
       },
-    ]);
+    ])
 
-    let totalIncome = 0;
-    let totalExpense = 0;
+    let totalIncome = 0
+    let totalExpense = 0
 
     aggregation.forEach((item) => {
-      if (item._id === "INCOME") totalIncome = item.totalAmount;
-      if (item._id === "EXPENSE") totalExpense = item.totalAmount;
-    });
+      if (item._id === "INCOME") totalIncome = item.totalAmount
+      if (item._id === "EXPENSE") totalExpense = item.totalAmount
+    })
 
-    const netBalance = totalIncome - totalExpense;
+    const netBalance = totalIncome - totalExpense
 
     res.status(200).json({
-      success: true,
       totalIncome,
       totalExpense,
       netBalance,
-    });
+    })
   } catch (err: any) {
-    console.error("Analytics Summary Error:", err);
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Analytics Summary Error:", err)
+    res.status(500).json({ message: err.message })
   }
-};
+}

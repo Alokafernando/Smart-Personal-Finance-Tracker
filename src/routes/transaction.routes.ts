@@ -12,7 +12,9 @@ router.put("/:id", authenticate, updateTransaction)
 router.delete("/:id", authenticate, deleteTransaction)
 router.get("/latest", authenticate, getLatestTransactions)
 
-///for admin dashboard
-router.get("/admin/all", authenticate, requireRole([UserRole.ADMIN]), getAllTransactions) //admin
+///for admin 
+router.get("/admin/all", authenticate, requireRole([UserRole.ADMIN]), getAllTransactions) 
+router.get("/admin/analytics/summary", authenticate, requireRole([UserRole.ADMIN]), getAnalyticsSummary);
+
 
 export default router
