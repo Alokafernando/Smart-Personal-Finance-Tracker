@@ -385,3 +385,36 @@ export const getAllTransactions = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: "Failed to fetch transactions" })
   }
 }
+
+export const getAnalyticsSummary = async (req: Request, res: Response) => {
+  try {
+    const aggregation = await Transaction.aggregate([
+      {
+        $group: {
+          _id: "$type",
+          totalAmount: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    let totalIncome = 0;
+    let totalExpense = 0;
+
+    aggregation.forEach((item) => {
+      if (item._id === "INCOME") totalIncome = item.totalAmount;
+      if (item._id === "EXPENSE") totalExpense = item.totalAmount;
+    });
+
+    const netBalance = totalIncome - totalExpense;
+
+    res.status(200).json({
+      success: true,
+      totalIncome,
+      totalExpense,
+      netBalance,
+    });
+  } catch (err: any) {
+    console.error("Analytics Summary Error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
