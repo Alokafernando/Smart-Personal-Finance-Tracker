@@ -1,6 +1,6 @@
-import { upload } from "../middleware/upload";
-import { processReceiptOCR } from "../controller/ocr.controller";
-import { Router } from "express";
+import { upload } from "../middleware/upload"
+import { processReceiptOCR } from "../controller/ocr.controller"
+import { Router } from "express"
 
 const router = Router()
 
