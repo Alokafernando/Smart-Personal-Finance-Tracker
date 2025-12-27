@@ -11,6 +11,6 @@ router.get("/", authenticate, getTransactions) //user's
 router.put("/:id", authenticate, updateTransaction)
 router.delete("/:id", authenticate, deleteTransaction)
 router.get("/latest", authenticate, getLatestTransactions)
-router.get("/all", authenticate, requireRole([UserRole.ADMIN]), getAllTransactions) //admin
+router.get("/admin/all", authenticate, requireRole([UserRole.ADMIN]), getAllTransactions) //admin
 
 export default router
