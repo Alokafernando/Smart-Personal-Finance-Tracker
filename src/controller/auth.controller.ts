@@ -102,12 +102,12 @@ export const login = async (req: Request, res: Response) => {
             return res.status(401).json({ message: "Invalid credentials" })
         }
 
-        // if (existingUser.approved === Status.PENDING) {
-        //     return res.status(403).json({ message: "User is pending approval" })
-        // }
+        if (existingUser.approved === Status.PENDING) {
+            return res.status(403).json({ message: "Your account is awaiting admin approval. Please try again later or contact support." })
+        }
 
         if (existingUser.approved === Status.REJECTED) {
-            return res.status(403).json({ message: "User has been rejected and cannot log in" })
+            return res.status(403).json({ message: "Your account has been temporarily blocked. Please contact our support team to resolve this issue." })
         }
 
         const valid = await bcrypt.compare(password as string, existingUser.password as string)
