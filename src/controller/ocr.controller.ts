@@ -12,7 +12,7 @@ const extractAmount = (text: string): string => {
 
   for (const line of lines) {
     if (
-      /(transaction amount|amount|total|net total|balance due|lkr|rs\.?)/i.test(line) &&
+      /(transaction amount|Amount|amount|total|net total|balance due|lkr|rs\.?)/i.test(line) &&
       !/invoice/i.test(line)
     ) {
       const match = line.match(moneyRegex)
@@ -50,7 +50,7 @@ const determineCategory = async (text: string, userId: string) => {
 
   if (categoryName === "Uncategorized") {
     if (/salary|payroll|income/.test(lower)) categoryName = "Salary"
-    else if (/investment|dividend|stock|bond/.test(lower)) categoryName = "Investments"
+    else if (/investment|saving|dividend|stock|bonds/.test(lower)) categoryName = "Investments"
     else if (/business|invoice|service/.test(lower)) categoryName = "Business"
     else if (/food|cafe|restaurant|coffee|meal|drink/.test(lower)) categoryName = "Food"
     else if (/shop|mall|clothes|shopping/.test(lower)) categoryName = "Shopping"
