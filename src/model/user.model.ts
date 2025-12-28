@@ -19,6 +19,8 @@ export interface IUser extends Document {
     password: string
     role: UserRole[]
     approved: Status
+    resetOtp?: string
+  resetOtpExpiry?: Date
 }
 
 
@@ -37,6 +39,8 @@ const userScehema = new Schema<IUser>({
         enum: Object.values(Status),
         default: Status.PENDING,
     },
+    resetOtp: { type: String },
+  resetOtpExpiry: { type: Date },
 })
 
 export const User = mongoose.model<IUser>("User", userScehema)

@@ -6,6 +6,7 @@ import { AuthRequest } from "../middleware/auth"
 import { DEFAULT_CATEGORIES } from "../data/defaultCategories"
 import { Category } from "../model/category.model"
 import { sendEmail } from "../config/mail"
+import nodemailer from "nodemailer"
 
 export const registerUser = async (req: Request, res: Response) => {
     try {
@@ -234,5 +235,78 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
         res.status(200).json({ message: "Password updated successfully" })
     } catch (err: any) {
         res.status(500).json({ message: err.message })
+    }
+}
+
+function generateOTP(length: number = 6) {
+    let otp = ""
+    for (let i = 0; i < length; i++) {
+        otp += Math.floor(Math.random() * 10)
+    }
+    return otp
+}
+
+export const sendOtp = async (req: Request, res: Response) => {
+    try {
+        const { email } = req.body
+        if (!email) return res.status(400).json({ message: "Email is required" })
+
+        const user = await User.findOne({ email: email })
+        if (!user) return res.status(404).json({ message: "We couldn’t find an account with that email. Please check and try again." })
+
+        const otp = generateOTP()
+
+        user.resetOtp = otp
+        user.resetOtpExpiry = new Date(Date.now() + 10 * 60 * 1000) // 10 min
+        await user.save()
+
+        const obj: any = {
+            host: process.env.SMTP_HOST,
+            port: Number(process.env.SMTP_PORT),
+            secure: false,
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            },
+        }
+
+        // Send email
+        const transporter = nodemailer.createTransport(obj)
+
+        await transporter.sendMail({
+            from: `"Finance Tracker" <${process.env.SMTP_USER}>`,
+            to: email,
+            subject: "🔒 Your OTP Code",
+            text: `Your OTP code is: ${otp}`,
+            html: `
+    <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+      <h2 style="color: #4CAF50;">Finance Tracker</h2>
+      <p>Hello,</p>
+      <p>Your One-Time Password (OTP) for resetting your password is:</p>
+      <div style="
+        font-size: 24px; 
+        font-weight: bold; 
+        background: #f0f0f0; 
+        display: inline-block; 
+        padding: 10px 20px; 
+        border-radius: 8px; 
+        margin: 10px 0;
+        letter-spacing: 4px;
+      ">
+        ${otp}
+      </div>
+      <p style="color: #888;">This OTP is valid for 10 minutes.</p>
+      <p>Do not share this OTP with anyone.</p>
+      <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+      <p style="font-size: 12px; color: #aaa;">If you didn't request this, please ignore this email.</p>
+    </div>
+  `,
+        })
+
+
+        res.json({ message: "OTP sent to email" })
+    } catch (err) {
+        console.error(err)
+        res.status(500).json({ message: "Server error" })
     }
 }
