@@ -310,3 +310,34 @@ export const sendOtp = async (req: Request, res: Response) => {
         res.status(500).json({ message: "Server error" })
     }
 }
+
+export const verifyOtpAndResetPassword = async (req: Request, res: Response) => {
+  try {
+    const { email, otp, newPassword } = req.body
+
+    if (!email || !otp || !newPassword)
+      return res.status(400).json({ message: "All fields are required" })
+
+    const user = await User.findOne({ email })
+    if (!user)
+      return res.status(404).json({ message: "We couldn’t find an account with that email." })
+
+    if (user.resetOtp !== otp || !user.resetOtpExpiry || user.resetOtpExpiry < new Date())
+      return res.status(400).json({ message: "Invalid or expired OTP" })
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
+    user.password = hashedPassword
+
+    // Clear OTP
+    user.resetOtp = undefined
+    user.resetOtpExpiry = undefined
+
+    await user.save()
+
+    res.json({ message: "Password has been successfully reset" })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ message: "Server error" })
+  }
+}
