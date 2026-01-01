@@ -6,8 +6,6 @@ export interface IBudget extends Document {
     category_id: mongoose.Types.ObjectId
     amount: number
     spent: number
-    month: number
-    year: number
 }
 
 const budgetSchema = new Schema<IBudget>(
@@ -16,25 +14,20 @@ const budgetSchema = new Schema<IBudget>(
         category_id: { type: Schema.Types.ObjectId, ref: "Category", required: true },
         amount: { type: Number, required: true, min: [0, "Amount cannot be negative"] },
         spent: { type: Number, required: true, default: 0, min: [0, "Spent cannot be negative"] },
-        month: { type: Number, required: true, min: 1, max: 12, },
-        year: { type: Number, required: true, min: 2000, max: 2100 },
     },
     {
         timestamps: true
     }
 )
 
-// Prevent duplicate budgets for same user/category/month/year
+// Prevent duplicate budgets for same user & category
 budgetSchema.index(
-    {
-         user_id: 1,
-        category_id: 1,
-        month: 1,
-        year: 1,
-    },
-    {
-        unique: true
-    }
+  {
+    user_id: 1,
+    category_id: 1,
+  },
+  { unique: true }
 )
+
 
 export const Budget = mongoose.model<IBudget>("Budget", budgetSchema);

@@ -7,22 +7,20 @@ import { AuthRequest } from "../middleware/auth"
 export const createBudget = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user.sub
-    const { category_id, amount, month, year, spent } = req.body
+    const { category_id, amount, spent } = req.body
 
-    if (!category_id || !amount || !month || !year) {
+    if (!category_id || !amount ) {
       return res.status(400).json({ message: "All fields are required" })
     }
 
     const exists = await Budget.findOne({
       user_id: userId,
       category_id,
-      month,
-      year,
     })
 
     if (exists) {
       return res.status(400).json({
-        message: `Budget already exists for this category/${month}/${year}`,
+        message: `Budget already exists for this category`,
       })
     }
 
@@ -30,8 +28,6 @@ export const createBudget = async (req: AuthRequest, res: Response) => {
       user_id: userId,
       category_id,
       amount,
-      month,
-      year,
       spent: spent ?? 0, // default 0
     })
 
@@ -67,7 +63,7 @@ export const updateBudget = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user.sub
     const budgetId = req.params.id
-    const { amount, month, year, spent, category_id } = req.body
+    const { amount, spent, category_id } = req.body
 
     if (!mongoose.isValidObjectId(budgetId)) {
       return res.status(400).json({ message: "Invalid budget ID" })
@@ -88,21 +84,17 @@ export const updateBudget = async (req: AuthRequest, res: Response) => {
       _id: { $ne: budgetId },
       user_id: userId,
       category_id: category_id ?? budget.category_id,
-      month: month ?? budget.month,
-      year: year ?? budget.year,
     })
 
     if (duplicate) {
       return res.status(400).json({
-        message: `Budget already exists for this category/${month ?? budget.month}/${year ?? budget.year}`,
+        message: `Budget already exists for this category`,
       })
     }
 
     // Update fields
     budget.category_id = category_id ?? budget.category_id
     budget.amount = amount ?? budget.amount
-    budget.month = month ?? budget.month
-    budget.year = year ?? budget.year
     budget.spent = spent ?? budget.spent
 
     await budget.save()
