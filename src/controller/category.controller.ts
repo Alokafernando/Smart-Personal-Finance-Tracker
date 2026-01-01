@@ -154,113 +154,69 @@ export const getAllCategories = async (req: Request, res: Response) => {
         const page = parseInt(req.query.page as string) || 1
         const limit = 10
         const skip = (page - 1) * limit
-
         const searchUser = (req.query.searchUser as string) || ""
 
-        let totalCount = 0
-        let categoriesData: any[] = []
+        // Base match for non-default categories with a user
+        const matchStage: any = { is_default: false, user_id: { $ne: null } }
 
-        // ================= USER SEARCH =================
+        const aggregatePipeline: any[] = [
+            { $match: matchStage },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "user_id",
+                    foreignField: "_id",
+                    as: "user",
+                },
+            },
+            { $unwind: "$user" }
+        ]
+
         if (searchUser) {
-            const totalAgg = await Category.aggregate([
-                {
-                    $match: {
-                        is_default: false, 
-                        user_id: { $ne: null },
-                    },
+            aggregatePipeline.push({
+                $match: {
+                    $or: [
+                        { "user.username": { $regex: searchUser, $options: "i" } },
+                        { "user.email": { $regex: searchUser, $options: "i" } },
+                    ],
                 },
-                {
-                    $lookup: {
-                        from: "users",
-                        localField: "user_id",
-                        foreignField: "_id",
-                        as: "user",
-                    },
-                },
-                { $unwind: "$user" },
-                {
-                    $match: {
-                        $or: [
-                            { "user.username": { $regex: searchUser, $options: "i" } },
-                            { "user.email": { $regex: searchUser, $options: "i" } },
-                        ],
-                    },
-                },
-                { $count: "total" },
-            ])
-
-            totalCount = totalAgg[0]?.total || 0
-
-            categoriesData = await Category.aggregate([
-                {
-                    $match: {
-                        is_default: false,
-                        user_id: { $ne: null },
-                    },
-                },
-                {
-                    $lookup: {
-                        from: "users",
-                        localField: "user_id",
-                        foreignField: "_id",
-                        as: "user",
-                    },
-                },
-                { $unwind: "$user" },
-                {
-                    $match: {
-                        $or: [
-                            { "user.username": { $regex: searchUser, $options: "i" } },
-                            { "user.email": { $regex: searchUser, $options: "i" } },
-                        ],
-                    },
-                },
-                { $sort: { createdAt: -1 } },
-                { $skip: skip },
-                { $limit: limit },
-            ])
-        } else {
-            // ================= NO SEARCH =================
-            totalCount = await Category.countDocuments({
-                is_default: false,
-                user_id: { $ne: null },
             })
-
-            categoriesData = await Category.find({
-                is_default: false,
-                user_id: { $ne: null },
-            })
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(limit)
-                .populate({ path: "user_id", select: "username email", model: "User" })
         }
+
+        // Facet to get both total count and paginated data
+        aggregatePipeline.push({
+            $facet: {
+                total: [{ $count: "count" }],
+                data: [
+                    { $sort: { createdAt: -1 } },
+                    { $skip: skip },
+                    { $limit: limit }
+                ]
+            }
+        })
+
+        const result = await Category.aggregate(aggregatePipeline)
+
+        const totalCount = result[0]?.total[0]?.count || 0
+        const categoriesData = result[0]?.data || []
 
         // ================= GROUP BY USER =================
         const usersMap: Record<string, any> = {}
 
         categoriesData.forEach((c: any) => {
             const user = c.user ?? (c.user_id && typeof c.user_id === "object" ? c.user_id : null)
-
             const userId = user?._id?.toString() || "orphan"
             const username = user?.username || "Unknown"
             const email = user?.email || "Unknown"
 
             if (!usersMap[userId]) {
-                usersMap[userId] = {
-                    userId,
-                    username,
-                    email,
-                    categories: [],
-                }
+                usersMap[userId] = { userId, username, email, categories: [] }
             }
 
-            if (!c.is_default) {
-                usersMap[userId].categories.push({
-                    name: c.name,
-                    is_default: c.is_default,
-                })
-            }
+            usersMap[userId].categories.push({
+                name: c.name,
+                is_default: c.is_default,
+            })
         })
 
         res.status(200).json({
@@ -271,6 +227,6 @@ export const getAllCategories = async (req: Request, res: Response) => {
         })
     } catch (error: any) {
         console.error(error)
-        res.status(500).json({ message: error.message || "Failed to fetch categories", })
+        res.status(500).json({ message: error.message || "Failed to fetch categories" })
     }
 }
