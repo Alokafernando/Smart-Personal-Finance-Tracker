@@ -7,7 +7,7 @@ import { AuthRequest } from "../middleware/auth"
 export const createBudget = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user.sub
-    const { category_id, amount, spent } = req.body
+    const { category_id, amount,  spent } = req.body
 
     if (!category_id || !amount ) {
       return res.status(400).json({ message: "All fields are required" })

@@ -20,14 +20,15 @@ const budgetSchema = new Schema<IBudget>(
     }
 )
 
-// Prevent duplicate budgets for same user & category
+// Prevent duplicate budgets for same user/category/month/year
 budgetSchema.index(
-  {
-    user_id: 1,
-    category_id: 1,
-  },
-  { unique: true }
+    {
+         user_id: 1,
+        category_id: 1,
+    },
+    {
+        unique: true
+    }
 )
-
 
 export const Budget = mongoose.model<IBudget>("Budget", budgetSchema);
