@@ -6,31 +6,50 @@ import { DEFAULT_CATEGORIES } from "../data/defaultCategories"
 
 /* ================= HELPER FUNCTIONS ================= */
 
-const extractAmount = (text: string): string => {
-  const lines = text.split(/\r?\n/)
-  const moneyRegex = /(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?)/
+export const extractAmount = (text: string): string => {
+  const cleanText = text
+    .replace(/\s+/g, " ")        // collapse multiple spaces
+    .replace(/[|=]/g, "")        // remove | and =
 
-  for (const line of lines) {
-    if (
-      /(transaction amount|Amount|amount|total|net total|balance due|lkr|rs\.?)/i.test(line) &&
-      !/invoice/i.test(line)
-    ) {
-      const match = line.match(moneyRegex)
-      if (match) return parseFloat(match[1].replace(/,/g, "")).toFixed(2)
-    }
+  // Rs / LKR =====
+  const currencyRegex =
+    /(rs\.?|lkr)\s*[:\-]?\s*(\d{1,3}(?:[ ,]\d{3})*(?:\.\d{2})?)/gi
+
+  const currencyMatches = [...cleanText.matchAll(currencyRegex)]
+
+  if (currencyMatches.length) {
+    const amounts = currencyMatches.map(m =>
+      parseFloat(m[2].replace(/,/g, "").replace(/\s/g, ""))
+    )
+    return Math.max(...amounts).toFixed(2)
   }
 
-  const allNumbers = [...text.matchAll(/\d+(?:,\d{1,3})*(?:\.\d{1,2})?/g)]
-    .map((m) => m[0])
-    .filter((n) => n.length <= 9)
+  // Amount / Total =====
+  const amountRegex =
+    /(amount|total|net total|transaction amount)[^\d]*(\d{1,3}(?:[ ,]\d{3})*(?:\.\d{2})?)/gi
 
-  if (allNumbers.length) {
-    const max = Math.max(...allNumbers.map((n) => parseFloat(n.replace(/,/g, ""))))
-    return max.toFixed(2)
+  const amountMatches = [...cleanText.matchAll(amountRegex)]
+
+  if (amountMatches.length) {
+    const amounts = amountMatches.map(m =>
+      parseFloat(m[2].replace(/,/g, "").replace(/\s/g, ""))
+    )
+    return Math.max(...amounts).toFixed(2)
+  }
+
+  // Fallback – Largest Reasonable =====
+  const numbers = [...cleanText.matchAll(/\d{1,3}(?:[ ,]\d{3})*(?:\.\d{2})?/g)]
+    .map(m => parseFloat(m[0].replace(/,/g, "").replace(/\s/g, "")))
+    .filter(n => n >= 100) // ignore small junk numbers
+
+  if (numbers.length) {
+    return Math.max(...numbers).toFixed(2)
   }
 
   return "0.00"
 }
+
+/* ================= MERCHANT DETECTION ================= */
 
 const extractMerchant = (text: string): string =>
   text.split(/\r?\n/)[0]?.trim() || "Unknown"
@@ -50,7 +69,7 @@ const determineCategory = async (text: string, userId: string) => {
 
   if (categoryName === "Uncategorized") {
     if (/salary|payroll|income/.test(lower)) categoryName = "Salary"
-    else if (/investment|saving|dividend|stock|bonds/.test(lower)) categoryName = "Investments"
+    else if (/investment| saving|dividend|stock|bonds|deposit|cash deposit|bank deposit|credited|fund transfer/.test(lower)) categoryName = "Investments"
     else if (/business|invoice|service/.test(lower)) categoryName = "Business"
     else if (/food|cafe|restaurant|coffee|meal|drink/.test(lower)) categoryName = "Food"
     else if (/shop|mall|clothes|shopping/.test(lower)) categoryName = "Shopping"
@@ -106,6 +125,7 @@ export const processReceiptOCR = async (req: AuthRequest, res: any) => {
 
     return res.json({
       message: "OCR processed successfully",
+      rawText,
       transaction: {
         merchant,
         amount,
