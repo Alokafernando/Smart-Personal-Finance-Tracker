@@ -33,14 +33,14 @@ app.use("/api/v1/ocr", ocrRoutes)
 
 
 mongoose
-.connect(MONGO_URI)
-.then(() => {
-    console.log("DB Connected")
-})
-.catch((err) => {
-    console.log(`DB Connection fail: ${err}`)
-    process.exit(1)
-})
+    .connect(MONGO_URI)
+    .then(() => {
+        console.log("DB Connected")
+    })
+    .catch((err) => {
+        console.log(`DB Connection fail: ${err}`)
+        process.exit(1)
+    })
 
 
 app.listen(SERVER_PORT, () => {
