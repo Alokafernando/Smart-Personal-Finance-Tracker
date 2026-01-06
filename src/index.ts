@@ -47,7 +47,6 @@
 //     })
 
 
-
 import express from "express"
 import dotenv from "dotenv"
 import cors from "cors"
@@ -67,20 +66,19 @@ const MONGO_URI = process.env.MONGO_URI as string
 
 const app = express()
 
-// ✅ Combined CORS for preflight and normal requests
+// ✅ CORS for preflight and normal requests
 const corsOptions = {
   origin: [
     "http://localhost:5173",
-    "https://smart-personal-finance-tracker-fe.vercel.app",
+    "https://smart-personal-finance-tracker-fe.vercel.app"
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }
 
 app.use(cors(corsOptions))
-app.options("*", cors(corsOptions))
-
+app.options("*", cors(corsOptions)) // handle preflight
 app.use(express.json())
 
 // Routes
@@ -92,8 +90,8 @@ app.use("/api/v1/transactions", transactionRouter)
 app.use("/api/v1/analytics", analyticsRoutes)
 app.use("/api/v1/ocr", ocrRoutes)
 
-// DB
+// Connect DB
 mongoose.connect(MONGO_URI).then(() => console.log("DB Connected"))
 
-// ✅ Export for Vercel serverless
+// ✅ Export app for Vercel serverless
 export default app
