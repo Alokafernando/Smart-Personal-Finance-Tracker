@@ -47,6 +47,7 @@
 //     })
 
 
+
 import express from "express"
 import dotenv from "dotenv"
 import cors from "cors"
@@ -66,7 +67,7 @@ const MONGO_URI = process.env.MONGO_URI as string
 
 const app = express()
 
-// ✅ 1. CORS FIRST
+// ✅ Combined CORS for preflight and normal requests
 const corsOptions = {
   origin: [
     "http://localhost:5173",
@@ -78,11 +79,8 @@ const corsOptions = {
 }
 
 app.use(cors(corsOptions))
-
-// ✅ 2. OPTIONS must use SAME cors config
 app.options("*", cors(corsOptions))
 
-// ✅ 3. Body parser AFTER CORS
 app.use(express.json())
 
 // Routes
@@ -95,10 +93,7 @@ app.use("/api/v1/analytics", analyticsRoutes)
 app.use("/api/v1/ocr", ocrRoutes)
 
 // DB
-mongoose.connect(MONGO_URI).then(() => {
-  console.log("DB Connected")
-})
+mongoose.connect(MONGO_URI).then(() => console.log("DB Connected"))
 
-// ❌ NO app.listen()
-// ✅ REQUIRED for Vercel
+// ✅ Export for Vercel serverless
 export default app
