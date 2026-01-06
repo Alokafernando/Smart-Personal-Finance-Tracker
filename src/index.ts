@@ -17,10 +17,13 @@ const MONGO_URI = process.env.MONGO_URI as string
 
 const app = express()
 
+app.options("*", cors())
 app.use(express.json())
 app.use(cors({
     origin: ["http://localhost:5173", "https://smart-personal-finance-tracker-fe.vercel.app"],
-    methods: ["POST", "GET", "PUT", "DELETE"]
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
 }))
 
 app.use("/api/v1/auth", authRouter)
