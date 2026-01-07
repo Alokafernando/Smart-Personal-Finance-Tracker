@@ -20,7 +20,8 @@ const app = express()
 app.use(express.json())
 
 app.use(cors({
-    origin: ["http://localhost:5173", "https://smart-personal-finance-tracker-fe.vercel.app"],
+    // origin: ["http://localhost:5173", "https://smart-personal-finance-tracker-fe.vercel.app"],
+      origin: "https://smart-personal-finance-tracker-fe.vercel.app",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
