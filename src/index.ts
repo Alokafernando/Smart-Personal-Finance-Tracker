@@ -9,7 +9,6 @@ import transactionRouter from "./routes/transaction.routes"
 import analyticsRoutes from "./routes/analytics.routes"
 import ocrRoutes from "./routes/ocr.routes"
 import mongoose from "mongoose"
-import { access } from "fs"
 
 dotenv.config()
 
@@ -18,14 +17,11 @@ const MONGO_URI = process.env.MONGO_URI as string
 
 const app = express()
 
+app.use(express.json())
 app.use(cors({
     origin: ["http://localhost:5173", "https://smart-personal-finance-tracker-fe.vercel.app"],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["POST", "GET", "PUT", "DELETE"]
 }))
-
-app.use(express.json())
 
 app.use("/api/v1/auth", authRouter)
 app.use("/api/v1/user", userRouter)
@@ -46,4 +42,7 @@ mongoose
         process.exit(1)
     })
 
-export default app
+
+app.listen(SERVER_PORT, () => {
+    console.log("server is running")
+})
