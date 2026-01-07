@@ -9,6 +9,7 @@ import transactionRouter from "./routes/transaction.routes"
 import analyticsRoutes from "./routes/analytics.routes"
 import ocrRoutes from "./routes/ocr.routes"
 import mongoose from "mongoose"
+import { access } from "fs"
 
 dotenv.config()
 
@@ -25,7 +26,12 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization"],
 }))
 
-app.options("*", cors());
+var corsOptions = {
+   origin: '*',
+   optionsSuccessStatus: 200 
+}
+
+app.options("*", cors(corsOptions));
 app.use(express.json())
 
 
