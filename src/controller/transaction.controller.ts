@@ -14,124 +14,68 @@ const getYearMonth = (date: Date | string) => {
   }
 }
 
-// export const createTransaction = async (req: AuthRequest, res: Response) => {
-//   try {
-//     const { category_id, amount, date, type, note, merchant, raw_text, ai_category } = req.body
-//     const userId = req.user?.sub
-
-//     if (!userId) {
-//       return res.status(401).json({ message: "Unauthorized" })
-//     }
-
-//     if (!category_id || !amount || !date || !type) {
-//       return res.status(400).json({ message: "Missing required fields" })
-//     }
-
-//     const category = await Category.findOne({
-//       _id: category_id,
-//       $or: [{ user_id: userId }, { is_default: true }],
-//     })
-
-//     if (!category) {
-//       return res.status(404).json({ message: "Category not found" })
-//     }
-
-//     const transaction = await Transaction.create({
-//       user_id: userId,
-//       category_id,
-//       amount,
-//       date,
-//       type,
-//       note,
-//       merchant,
-//       raw_text,
-//       ai_category,
-//     })
-
-//     /* -------- Budget update  -------- */
-//     if (type === "EXPENSE" || type === "INCOME") {
-//       const { year, month } = getYearMonth(date)
-//       const numericAmount = Number(amount)
-
-//       // Only update if budget exists
-//       const budget = await Budget.findOne({
-//         user_id: new mongoose.Types.ObjectId(userId),
-//         category_id: new mongoose.Types.ObjectId(category_id),
-//         year,
-//         month,
-//       })
-
-//       if (budget) {
-//         budget.spent += numericAmount
-//         await budget.save()
-//       }
-//     }
-
-//     return res.status(201).json({
-//       message: "Transaction created successfully",
-//       transaction,
-//     })
-//   } catch (err: any) {
-//     console.error("Create Transaction Error:", err)
-//     return res.status(500).json({ message: err.message || "Server error" })
-//   }
-// }
 export const createTransaction = async (req: AuthRequest, res: Response) => {
   try {
-    const { category_id, amount, date, type, note, merchant, raw_text, ai_category } = req.body;
-    const userId = req.user?.sub;
+    const { category_id, amount, date, type, note, merchant, raw_text, ai_category } = req.body
+    const userId = req.user?.sub
 
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-    if (!category_id || !amount || !date || !type)
-      return res.status(400).json({ message: "Missing required fields" });
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" })
+    }
 
-    const numericAmount = Number(amount);
-    if (isNaN(numericAmount) || numericAmount < 0)
-      return res.status(400).json({ message: "Invalid amount" });
+    if (!category_id || !amount || !date || !type) {
+      return res.status(400).json({ message: "Missing required fields" })
+    }
 
     const category = await Category.findOne({
       _id: category_id,
       $or: [{ user_id: userId }, { is_default: true }],
-    });
-    if (!category) return res.status(404).json({ message: "Category not found" });
+    })
+
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" })
+    }
 
     const transaction = await Transaction.create({
       user_id: userId,
       category_id,
-      amount: numericAmount,
-      date: new Date(date),
+      amount,
+      date,
       type,
       note,
       merchant,
       raw_text,
       ai_category,
-    });
+    })
 
+    /* -------- Budget update  -------- */
     if (type === "EXPENSE" || type === "INCOME") {
-      const { year, month } = getYearMonth(date);
+      const { year, month } = getYearMonth(date)
+      const numericAmount = Number(amount)
 
-      // Deployment-safe Budget update
-      await Budget.findOneAndUpdate(
-        {
-          user_id: new mongoose.Types.ObjectId(userId),
-          category_id: new mongoose.Types.ObjectId(category_id),
-          year,
-          month,
-        },
-        { $inc: { spent: numericAmount }, user_id: userId, category_id, year, month },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
+      // Only update if budget exists
+      const budget = await Budget.findOne({
+        user_id: new mongoose.Types.ObjectId(userId),
+        category_id: new mongoose.Types.ObjectId(category_id),
+        year,
+        month,
+      })
+
+      if (budget) {
+        budget.spent += numericAmount
+        await budget.save()
+      }
     }
 
     return res.status(201).json({
       message: "Transaction created successfully",
       transaction,
-    });
+    })
   } catch (err: any) {
-    console.error("Create Transaction Error:", err);
-    return res.status(500).json({ message: err.message || "Server error" });
+    console.error("Create Transaction Error:", err)
+    return res.status(500).json({ message: err.message || "Server error" })
   }
-};
+}
 
 export const getTransactionById = async (req: Request, res: Response) => {
   try {
