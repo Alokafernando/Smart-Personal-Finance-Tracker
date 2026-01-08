@@ -115,7 +115,7 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    return res.status(201).json({ message: "Transaction created successfully", transaction })
+    return res.status(201).json({ message: "Transaction created successfully", transaction });
   } catch (err: any) {
     console.error("Create Transaction Error:", err)
     return res.status(500).json({ message: err.message || "Server error" })
@@ -260,29 +260,31 @@ export const updateTransaction = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid transaction ID" })
     }
 
-    const obj = await Transaction.findById(id)
-    if (!obj) {
+    const transaction = await Transaction.findById(id)
+    if (!transaction) {
       return res.status(404).json({ message: "Transaction not found" })
     }
 
-    const oldAmount = obj.amount
-    const oldCategory = obj.category_id
+    const oldAmount = transaction.amount
+    const oldCategoryId = transaction.category_id
+    const userId = transaction.user_id
 
     // Update transaction fields
-    if (category_id) obj.category_id = category_id
-    if (amount !== undefined) obj.amount = amount
-    if (note !== undefined) obj.note = note
-    if (date) obj.date = date
+    if (category_id) transaction.category_id = category_id
+    if (amount !== undefined) transaction.amount = amount
+    if (note !== undefined) transaction.note = note
+    if (date) transaction.date = date
 
-    await obj.save()
+    await transaction.save()
 
     /* -------- Budget auto update -------- */
-    if (obj.type === "EXPENSE" || obj.type === "INCOME") {
+    if (transaction.type === "EXPENSE" || transaction.type === "INCOME") {
+      const newAmount = Number(transaction.amount)
 
-      // 1️⃣ Reduce spent from OLD category
+      // 1️⃣ Subtract old amount from OLD category
       const oldBudget = await Budget.findOne({
-        user_id: obj.user_id,
-        category_id: oldCategory,
+        user_id: userId,
+        category_id: oldCategoryId,
       })
 
       if (oldBudget) {
@@ -290,24 +292,24 @@ export const updateTransaction = async (req: Request, res: Response) => {
         await oldBudget.save()
       }
 
-      // 2️⃣ Add spent to NEW category
+      // 2️⃣ Add new amount to NEW category
       const newBudget = await Budget.findOne({
-        user_id: obj.user_id,
-        category_id: obj.category_id,
+        user_id: userId,
+        category_id: transaction.category_id,
       })
 
       if (newBudget) {
-        newBudget.spent += obj.amount
+        newBudget.spent += newAmount
         await newBudget.save()
       }
     }
 
     return res.json({
       message: "Transaction updated successfully",
-      transaction: obj,
+      transaction,
     })
   } catch (err) {
-    console.error("Update Error:", err)
+    console.error("Update Transaction Error:", err)
     return res.status(500).json({ message: "Error updating transaction" })
   }
 }
