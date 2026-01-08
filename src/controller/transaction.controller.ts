@@ -192,7 +192,6 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
   }
 }
 
-
 // export const updateTransaction = async (req: Request, res: Response) => {
 //   try {
 //     const { id } = req.params
@@ -250,7 +249,6 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
 //     return res.status(500).json({ message: "Error updating transaction" })
 //   }
 // }
-
 export const updateTransaction = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
@@ -281,7 +279,7 @@ export const updateTransaction = async (req: Request, res: Response) => {
     if (transaction.type === "EXPENSE" || transaction.type === "INCOME") {
       const newAmount = Number(transaction.amount)
 
-      // 1️⃣ Subtract old amount from OLD category
+      // 1️⃣ Reduce spent from OLD category
       const oldBudget = await Budget.findOne({
         user_id: userId,
         category_id: oldCategoryId,
@@ -292,7 +290,7 @@ export const updateTransaction = async (req: Request, res: Response) => {
         await oldBudget.save()
       }
 
-      // 2️⃣ Add new amount to NEW category
+      // 2️⃣ Increase spent in NEW category
       const newBudget = await Budget.findOne({
         user_id: userId,
         category_id: transaction.category_id,
