@@ -192,59 +192,6 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
   }
 }
 
-// export const updateTransaction = async (req: Request, res: Response) => {
-//   try {
-//     const { id } = req.params
-//     const { category_id, amount, note, date } = req.body
-
-//     if (!mongoose.isValidObjectId(id)) {
-//       return res.status(400).json({ message: "Invalid transaction ID" })
-//     }
-
-//     const obj = await Transaction.findById(id)
-//     if (!obj) return res.status(404).json({ message: "Transaction not found" })
-
-//     const oldAmount = obj.amount
-//     const oldCategory = obj.category_id
-//     const oldDate = obj.date
-
-//     if (category_id) obj.category_id = category_id
-//     if (amount !== undefined) obj.amount = amount
-//     if (note !== undefined) obj.note = note
-//     if (date) obj.date = date
-
-//     await obj.save()
-
-//     if (obj.type === "EXPENSE" || obj.type === "INCOME") {
-//       const oldYM = getYearMonth(oldDate)
-//       const newYM = getYearMonth(obj.date)
-
-//       await Budget.findOneAndUpdate(
-//         {
-//           user_id: obj.user_id,
-//           category_id: oldCategory,
-//         },
-//         { $inc: { spent: -oldAmount } }
-//       )
-
-//       await Budget.findOneAndUpdate(
-//         {
-//           user_id: obj.user_id,
-//           category_id: obj.category_id,
-//         },
-//         { $inc: { spent: obj.amount } }
-//       )
-//     }
-
-//     return res.json({
-//       message: "Transaction updated successfully",
-//       transaction: obj,
-//     })
-//   } catch (err) {
-//     console.error("Update Error:", err)
-//     return res.status(500).json({ message: "Error updating transaction" })
-//   }
-// }
 export const updateTransaction = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
@@ -263,7 +210,6 @@ export const updateTransaction = async (req: Request, res: Response) => {
     const oldCategoryId = transaction.category_id
     const userId = transaction.user_id
 
-    // Update transaction fields
     if (category_id) transaction.category_id = category_id
     if (amount !== undefined) transaction.amount = amount
     if (note !== undefined) transaction.note = note
@@ -271,7 +217,6 @@ export const updateTransaction = async (req: Request, res: Response) => {
 
     await transaction.save()
 
-    /* -------- Budget auto update -------- */
     if (transaction.type === "EXPENSE" || transaction.type === "INCOME") {
       const newAmount = Number(transaction.amount)
 
@@ -300,13 +245,14 @@ export const updateTransaction = async (req: Request, res: Response) => {
 
     return res.json({
       message: "Transaction updated successfully",
-      transaction,
+      transaction: transaction,
     })
   } catch (err) {
-    console.error("Update Transaction Error:", err)
+    console.error("Update Error:", err)
     return res.status(500).json({ message: "Error updating transaction" })
   }
 }
+
 
 export const deleteTransaction = async (req: Request, res: Response) => {
   try {
