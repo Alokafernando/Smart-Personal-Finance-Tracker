@@ -53,16 +53,27 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
       const { year, month } = getYearMonth(date)
       const numericAmount = Number(amount)
 
-      // Only update if budget exists
+      // // Only update if budget exists
+      // const budget = await Budget.findOne({
+      //   user_id: new mongoose.Types.ObjectId(userId),
+      //   category_id: new mongoose.Types.ObjectId(category_id),
+      //   year,
+      //   month,
+      // })
       const budget = await Budget.findOne({
-        user_id: new mongoose.Types.ObjectId(userId),
-        category_id: new mongoose.Types.ObjectId(category_id),
+        user_id: userId,
+        category_id: category_id,
         year,
         month,
       })
 
+
+      // if (budget) {
+      //   budget.spent += numericAmount
+      //   await budget.save()
+      // }
       if (budget) {
-        budget.spent += numericAmount
+        budget.spent = (budget.spent || 0) + numericAmount
         await budget.save()
       }
     }
