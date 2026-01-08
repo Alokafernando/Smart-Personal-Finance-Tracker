@@ -67,20 +67,25 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
     //   }
     // }
     if (type === "EXPENSE" || type === "INCOME") {
-      const { year, month } = getYearMonth(date)
-      const numericAmount = Number(amount)
+  const { year, month } = getYearMonth(date);
 
-      await Budget.findOneAndUpdate(
-        {
-          user_id: new mongoose.Types.ObjectId(userId),
-          category_id: new mongoose.Types.ObjectId(category_id),
-          year,
-          month,
-        },
-        { $inc: { spent: numericAmount } }, 
-        { upsert: true, new: true }        
-      )
-    }
+  try {
+    await Budget.findOneAndUpdate(
+      {
+        user_id: new mongoose.Types.ObjectId(userId),
+        category_id: new mongoose.Types.ObjectId(category_id),
+        year,
+        month,
+      },
+      { $inc: { spent: Number(amount) }, user_id: userId, category_id: category_id, year, month },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+  } catch (err) {
+    console.error("Budget upsert failed:", err);
+    return res.status(500).json({ message: "Budget update failed" });
+  }
+}
+
 
     return res.status(201).json({
       message: "Transaction created successfully",
