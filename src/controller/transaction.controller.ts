@@ -250,6 +250,39 @@ export const updateTransaction = async (req: Request, res: Response) => {
   }
 }
 
+// export const deleteTransaction = async (req: Request, res: Response) => {
+//   try {
+//     const { id } = req.params
+
+//     if (!mongoose.isValidObjectId(id)) {
+//       return res.status(400).json({ message: "Invalid transaction ID" })
+//     }
+
+//     const obj = await Transaction.findById(id)
+//     if (!obj) return res.status(404).json({ message: "Transaction not found" })
+
+//     if (obj.type === "EXPENSE" || obj.type === "INCOME") {
+//       const { year, month } = getYearMonth(obj.date)
+
+//       await Budget.findOneAndUpdate(
+//         {
+//           user_id: obj.user_id,
+//           category_id: obj.category_id,
+//           year,
+//           month,
+//         },
+//         { $inc: { spent: -obj.amount } }
+//       )
+//     }
+
+//     await obj.deleteOne()
+
+//     return res.json({ message: "Transaction deleted successfully" })
+//   } catch (err) {
+//     console.error("Delete Error:", err)
+//     return res.status(500).json({ message: "Error deleting transaction" })
+//   }
+// }
 export const deleteTransaction = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
@@ -258,24 +291,20 @@ export const deleteTransaction = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid transaction ID" })
     }
 
-    const obj = await Transaction.findById(id)
-    if (!obj) return res.status(404).json({ message: "Transaction not found" })
+    const tx = await Transaction.findById(id)
+    if (!tx) return res.status(404).json({ message: "Transaction not found" })
 
-    if (obj.type === "EXPENSE" || obj.type === "INCOME") {
-      const { year, month } = getYearMonth(obj.date)
-
+    if (tx.type === "EXPENSE" || tx.type === "INCOME") {
       await Budget.findOneAndUpdate(
         {
-          user_id: obj.user_id,
-          category_id: obj.category_id,
-          year,
-          month,
+          user_id: tx.user_id,
+          category_id: tx.category_id,
         },
-        { $inc: { spent: -obj.amount } }
+        { $inc: { spent: -Number(tx.amount) } }
       )
     }
 
-    await obj.deleteOne()
+    await tx.deleteOne()
 
     return res.json({ message: "Transaction deleted successfully" })
   } catch (err) {
@@ -283,6 +312,7 @@ export const deleteTransaction = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error deleting transaction" })
   }
 }
+
 
 export const getLatestTransactions = async (req: AuthRequest, res: Response) => {
   try {
