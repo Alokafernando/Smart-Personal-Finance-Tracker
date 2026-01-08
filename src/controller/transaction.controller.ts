@@ -85,13 +85,6 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
     if (!category_id || !amount || !date || !type)
       return res.status(400).json({ message: "Missing required fields" })
 
-    const category = await Category.findOne({
-      _id: category_id,
-      $or: [{ user_id: userId }, { is_default: true }],
-    })
-
-    if (!category) return res.status(404).json({ message: "Category not found" })
-
     const transaction = await Transaction.create({
       user_id: userId,
       category_id,
@@ -104,18 +97,14 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
       ai_category,
     })
 
-    // Update budget spent automatically
     if (type === "EXPENSE" || type === "INCOME") {
-      const numericAmount = Number(amount)
-      const budget = await Budget.findOne({ user_id: userId, category_id })
-
-      if (budget) {
-        budget.spent += numericAmount
-        await budget.save()
-      }
+      await Budget.findOneAndUpdate(
+        { user_id: userId, category_id },
+        { $inc: { spent: Number(amount) } }
+      )
     }
 
-    return res.status(201).json({ message: "Transaction created successfully", transaction });
+    return res.status(201).json({ message: "Transaction created successfully", transaction })
   } catch (err: any) {
     console.error("Create Transaction Error:", err)
     return res.status(500).json({ message: err.message || "Server error" })
@@ -254,17 +243,17 @@ export const updateTransaction = async (req: Request, res: Response) => {
     const { id } = req.params
     const { category_id, amount, note, date } = req.body
 
-    if (!mongoose.isValidObjectId(id)) {
+    if (!mongoose.isValidObjectId(id))
       return res.status(400).json({ message: "Invalid transaction ID" })
-    }
 
     const tx = await Transaction.findById(id)
-    if (!tx) return res.status(404).json({ message: "Transaction not found" })
+    if (!tx || !tx.category_id)
+      return res.status(404).json({ message: "Transaction not found" })
 
     const oldAmount = Number(tx.amount)
-    const oldCategory = tx._id.toString()
+    const oldCategoryId = tx.category_id.toString()
 
-    // ---------- Update fields ----------
+    // Update fields
     if (category_id) tx.category_id = category_id
     if (amount !== undefined) tx.amount = amount
     if (note !== undefined) tx.note = note
@@ -272,28 +261,28 @@ export const updateTransaction = async (req: Request, res: Response) => {
 
     await tx.save()
 
-    // ---------- Update budget spent ----------
     if (tx.type === "EXPENSE" || tx.type === "INCOME") {
+      if (!tx.category_id) {
+        return res.status(400).json({ message: "Transaction has no category" })
+      }
+
       const newAmount = Number(tx.amount)
+      const oldCategoryId = tx.category_id.toString()  // now safe
+      const newCategoryId = tx.category_id.toString()  // after updates
 
       // Remove from old category
       await Budget.findOneAndUpdate(
-        {
-          user_id: tx.user_id,
-          category_id: oldCategory,
-        },
-        { $inc: { spent: -oldAmount } }
+        { user_id: tx.user_id, category_id: oldCategoryId },
+        { $inc: { spent: -Number(tx.amount) } }
       )
 
       // Add to new category
       await Budget.findOneAndUpdate(
-        {
-          user_id: tx.user_id,
-          category_id: tx.category_id,
-        },
+        { user_id: tx.user_id, category_id: newCategoryId },
         { $inc: { spent: newAmount } }
       )
     }
+
 
     return res.json({
       message: "Transaction updated successfully",
@@ -304,6 +293,7 @@ export const updateTransaction = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error updating transaction" })
   }
 }
+
 
 
 // export const deleteTransaction = async (req: Request, res: Response) => {
@@ -343,19 +333,16 @@ export const deleteTransaction = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
 
-    if (!mongoose.isValidObjectId(id)) {
+    if (!mongoose.isValidObjectId(id))
       return res.status(400).json({ message: "Invalid transaction ID" })
-    }
 
     const tx = await Transaction.findById(id)
-    if (!tx) return res.status(404).json({ message: "Transaction not found" })
+    if (!tx || !tx.category_id)
+      return res.status(404).json({ message: "Transaction not found" })
 
     if (tx.type === "EXPENSE" || tx.type === "INCOME") {
       await Budget.findOneAndUpdate(
-        {
-          user_id: tx.user_id,
-          category_id: tx.category_id,
-        },
+        { user_id: tx.user_id, category_id: tx.category_id },
         { $inc: { spent: -Number(tx.amount) } }
       )
     }
