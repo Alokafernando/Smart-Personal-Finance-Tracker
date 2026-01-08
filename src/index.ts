@@ -79,7 +79,7 @@ app.use(
 )
 
 // handle preflight explicitly (VERY IMPORTANT)
-app.options("*", cors())
+// app.options("*", cors())
 
 app.get("/", (_req, res) => {
   res.json({ message: "Backend running on Vercel !!!" });
