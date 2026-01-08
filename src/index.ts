@@ -66,13 +66,13 @@ const app = express();
 
 /* ---------- MIDDLEWARE ---------- */
 app.use(express.json());
+
 app.use(
   cors({
-    origin:"*",
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
-app.options("*", cors());
 
 /* ---------- SERVERLESS-SAFE MONGODB ---------- */
 const MONGO_URI = process.env.MONGO_URI as string;
@@ -84,17 +84,23 @@ if (!cached) cached = (global as any).mongoose = { conn: null, promise: null };
 
 async function connectDB() {
   if (cached.conn) return cached.conn;
-  if (!cached.promise) cached.promise = mongoose.connect(MONGO_URI).then(m => m);
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(MONGO_URI).then(m => m);
+  }
   cached.conn = await cached.promise;
   return cached.conn;
 }
 
-// connect immediately
-connectDB().then(() => console.log("DB Connected")).catch(err => console.error(err));
+connectDB()
+  .then(() => console.log("DB Connected"))
+  .catch(err => console.error(err));
 
 /* ---------- ROOT CHECK ---------- */
 app.get("/", (req, res) => {
-  res.json({ status: "OK", message: "Smart Personal Finance Tracker Backend Live 🚀" });
+  res.json({
+    status: "OK",
+    message: "Smart Personal Finance Tracker Backend Live 🚀",
+  });
 });
 
 /* ---------- ROUTES ---------- */
