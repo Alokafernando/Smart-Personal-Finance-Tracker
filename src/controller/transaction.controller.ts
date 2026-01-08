@@ -256,14 +256,19 @@ export const updateTransaction = async (req: Request, res: Response) => {
     const { id } = req.params
     const { category_id, amount, note, date } = req.body
 
-    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "Invalid transaction ID" })
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid transaction ID" })
+    }
 
     const obj = await Transaction.findById(id)
-    if (!obj) return res.status(404).json({ message: "Transaction not found" })
+    if (!obj) {
+      return res.status(404).json({ message: "Transaction not found" })
+    }
 
     const oldAmount = obj.amount
     const oldCategory = obj.category_id
 
+    // Update transaction fields
     if (category_id) obj.category_id = category_id
     if (amount !== undefined) obj.amount = amount
     if (note !== undefined) obj.note = note
@@ -271,23 +276,36 @@ export const updateTransaction = async (req: Request, res: Response) => {
 
     await obj.save()
 
+    /* -------- Budget auto update -------- */
     if (obj.type === "EXPENSE" || obj.type === "INCOME") {
-      // Decrease old budget
-      const oldBudget = await Budget.findOne({ user_id: obj.user_id, category_id: oldCategory })
+
+      // 1️⃣ Reduce spent from OLD category
+      const oldBudget = await Budget.findOne({
+        user_id: obj.user_id,
+        category_id: oldCategory,
+      })
+
       if (oldBudget) {
-        oldBudget.spent -= oldAmount
+        oldBudget.spent = Math.max(0, oldBudget.spent - oldAmount)
         await oldBudget.save()
       }
 
-      // Increase new budget
-      const newBudget = await Budget.findOne({ user_id: obj.user_id, category_id: obj.category_id })
+      // 2️⃣ Add spent to NEW category
+      const newBudget = await Budget.findOne({
+        user_id: obj.user_id,
+        category_id: obj.category_id,
+      })
+
       if (newBudget) {
         newBudget.spent += obj.amount
         await newBudget.save()
       }
     }
 
-    return res.json({ message: "Transaction updated successfully", transaction: obj })
+    return res.json({
+      message: "Transaction updated successfully",
+      transaction: obj,
+    })
   } catch (err) {
     console.error("Update Error:", err)
     return res.status(500).json({ message: "Error updating transaction" })
