@@ -78,19 +78,44 @@ const getYearMonth = (date: Date | string) => {
 // }
 export const createTransaction = async (req: AuthRequest, res: Response) => {
   try {
-    const { category_id, amount, date, type, note, merchant, raw_text, ai_category } = req.body;
-    const userId = req.user?.sub;
+    const {
+      category_id,
+      amount,
+      date,
+      type,
+      note = "",
+      merchant = "",
+      raw_text = "",
+      ai_category = "",
+    } = req.body;
 
+    const userId = req.user?.sub;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    // Validate required fields
     if (!category_id || !amount || !date || !type)
-      return res.status(400).json({ message: "Missing required fields" });
+      return res.status(400).json({
+        message: "Missing required fields: category_id, amount, date, type",
+      });
+
+    // Validate amount
+    const numericAmount = Number(amount);
+    if (isNaN(numericAmount) || numericAmount < 0)
+      return res.status(400).json({ message: "Invalid amount" });
+
+    // Check category exists
+    const category = await Category.findOne({
+      _id: category_id,
+      $or: [{ user_id: userId }, { is_default: true }],
+    });
+    if (!category) return res.status(404).json({ message: "Category not found" });
 
     // Create transaction
     const transaction = await Transaction.create({
       user_id: userId,
       category_id,
-      amount,
-      date,
+      amount: numericAmount,
+      date: new Date(date),
       type,
       note,
       merchant,
@@ -98,23 +123,32 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
       ai_category,
     });
 
-    // Update budget if EXPENSE or INCOME
+    // Update or create budget if EXPENSE or INCOME
     if (type === "EXPENSE" || type === "INCOME") {
       const { year, month } = getYearMonth(date);
 
-      const budget = await Budget.findOneAndUpdate(
-        { user_id: userId, category_id, year, month },
-        { $inc: { spent: Number(amount) } },
-        { new: true, upsert: true } // create if missing
+      await Budget.findOneAndUpdate(
+        {
+          user_id: new mongoose.Types.ObjectId(userId),
+          category_id: new mongoose.Types.ObjectId(category_id),
+          year,
+          month,
+        },
+        { $inc: { spent: numericAmount } },
+        { upsert: true, new: true }
       );
     }
 
-    return res.status(201).json({ message: "Transaction created successfully", transaction });
+    return res.status(201).json({
+      message: "Transaction created successfully",
+      transaction,
+    });
   } catch (err: any) {
     console.error("Create Transaction Error:", err);
     return res.status(500).json({ message: err.message || "Server error" });
   }
 };
+
 
 export const getTransactionById = async (req: Request, res: Response) => {
   try {
