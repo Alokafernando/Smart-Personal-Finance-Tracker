@@ -192,6 +192,63 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
   }
 }
 
+// export const updateTransaction = async (req: Request, res: Response) => {
+//   try {
+//     const { id } = req.params
+//     const { category_id, amount, note, date } = req.body
+
+//     if (!mongoose.isValidObjectId(id)) {
+//       return res.status(400).json({ message: "Invalid transaction ID" })
+//     }
+
+//     const obj = await Transaction.findById(id)
+//     if (!obj) return res.status(404).json({ message: "Transaction not found" })
+
+//     const oldAmount = obj.amount
+//     const oldCategory = obj.category_id
+//     const oldDate = obj.date
+
+//     if (category_id) obj.category_id = category_id
+//     if (amount !== undefined) obj.amount = amount
+//     if (note !== undefined) obj.note = note
+//     if (date) obj.date = date
+
+//     await obj.save()
+
+//     if (obj.type === "EXPENSE" || obj.type === "INCOME") {
+//       const oldYM = getYearMonth(oldDate)
+//       const newYM = getYearMonth(obj.date)
+
+//       await Budget.findOneAndUpdate(
+//         {
+//           user_id: obj.user_id,
+//           category_id: oldCategory,
+//           year: oldYM.year,
+//           month: oldYM.month,
+//         },
+//         { $inc: { spent: -oldAmount } }
+//       )
+
+//       await Budget.findOneAndUpdate(
+//         {
+//           user_id: obj.user_id,
+//           category_id: obj.category_id,
+//           year: newYM.year,
+//           month: newYM.month,
+//         },
+//         { $inc: { spent: obj.amount } }
+//       )
+//     }
+
+//     return res.json({
+//       message: "Transaction updated successfully",
+//       transaction: obj,
+//     })
+//   } catch (err) {
+//     console.error("Update Error:", err)
+//     return res.status(500).json({ message: "Error updating transaction" })
+//   }
+// }
 export const updateTransaction = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
@@ -201,54 +258,53 @@ export const updateTransaction = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid transaction ID" })
     }
 
-    const obj = await Transaction.findById(id)
-    if (!obj) return res.status(404).json({ message: "Transaction not found" })
+    const tx = await Transaction.findById(id)
+    if (!tx) return res.status(404).json({ message: "Transaction not found" })
 
-    const oldAmount = obj.amount
-    const oldCategory = obj.category_id
-    const oldDate = obj.date
+    const oldAmount = Number(tx.amount)
+    const oldCategory = tx.category_id.toString()
 
-    if (category_id) obj.category_id = category_id
-    if (amount !== undefined) obj.amount = amount
-    if (note !== undefined) obj.note = note
-    if (date) obj.date = date
+    // ---------- Update fields ----------
+    if (category_id) tx.category_id = category_id
+    if (amount !== undefined) tx.amount = amount
+    if (note !== undefined) tx.note = note
+    if (date) tx.date = date
 
-    await obj.save()
+    await tx.save()
 
-    if (obj.type === "EXPENSE" || obj.type === "INCOME") {
-      const oldYM = getYearMonth(oldDate)
-      const newYM = getYearMonth(obj.date)
+    // ---------- Update budget spent ----------
+    if (tx.type === "EXPENSE" || tx.type === "INCOME") {
+      const newAmount = Number(tx.amount)
 
+      // Remove from old category
       await Budget.findOneAndUpdate(
         {
-          user_id: obj.user_id,
+          user_id: tx.user_id,
           category_id: oldCategory,
-          year: oldYM.year,
-          month: oldYM.month,
         },
         { $inc: { spent: -oldAmount } }
       )
 
+      // Add to new category
       await Budget.findOneAndUpdate(
         {
-          user_id: obj.user_id,
-          category_id: obj.category_id,
-          year: newYM.year,
-          month: newYM.month,
+          user_id: tx.user_id,
+          category_id: tx.category_id,
         },
-        { $inc: { spent: obj.amount } }
+        { $inc: { spent: newAmount } }
       )
     }
 
     return res.json({
       message: "Transaction updated successfully",
-      transaction: obj,
+      transaction: tx,
     })
   } catch (err) {
     console.error("Update Error:", err)
     return res.status(500).json({ message: "Error updating transaction" })
   }
 }
+
 
 // export const deleteTransaction = async (req: Request, res: Response) => {
 //   try {
