@@ -262,7 +262,7 @@ export const updateTransaction = async (req: Request, res: Response) => {
     if (!tx) return res.status(404).json({ message: "Transaction not found" })
 
     const oldAmount = Number(tx.amount)
-    const oldCategory = tx.category_id.toString()
+    const oldCategory = tx._id.toString()
 
     // ---------- Update fields ----------
     if (category_id) tx.category_id = category_id
