@@ -223,8 +223,6 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
 //         {
 //           user_id: obj.user_id,
 //           category_id: oldCategory,
-//           year: oldYM.year,
-//           month: oldYM.month,
 //         },
 //         { $inc: { spent: -oldAmount } }
 //       )
@@ -233,8 +231,6 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
 //         {
 //           user_id: obj.user_id,
 //           category_id: obj.category_id,
-//           year: newYM.year,
-//           month: newYM.month,
 //         },
 //         { $inc: { spent: obj.amount } }
 //       )
@@ -279,7 +275,7 @@ export const updateTransaction = async (req: Request, res: Response) => {
     if (transaction.type === "EXPENSE" || transaction.type === "INCOME") {
       const newAmount = Number(transaction.amount)
 
-      // 1️⃣ Reduce spent from OLD category
+      // 🔻 Decrease spent from OLD category
       const oldBudget = await Budget.findOne({
         user_id: userId,
         category_id: oldCategoryId,
@@ -290,7 +286,7 @@ export const updateTransaction = async (req: Request, res: Response) => {
         await oldBudget.save()
       }
 
-      // 2️⃣ Increase spent in NEW category
+      // 🔺 Increase spent in NEW category
       const newBudget = await Budget.findOne({
         user_id: userId,
         category_id: transaction.category_id,
@@ -311,7 +307,6 @@ export const updateTransaction = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Error updating transaction" })
   }
 }
-
 
 export const deleteTransaction = async (req: Request, res: Response) => {
   try {
