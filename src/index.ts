@@ -19,7 +19,7 @@ app.use(express.json())
 
 app.use(
   cors({
-    origin: "*",
+    origin: ["http://localhost:5173", "https://smart-personal-finance-tracker-fe.vercel.app"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 )
