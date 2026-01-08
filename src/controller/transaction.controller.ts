@@ -201,58 +201,54 @@ export const updateTransaction = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid transaction ID" })
     }
 
-    const transaction = await Transaction.findById(id)
-    if (!transaction) {
-      return res.status(404).json({ message: "Transaction not found" })
-    }
+    const obj = await Transaction.findById(id)
+    if (!obj) return res.status(404).json({ message: "Transaction not found" })
 
-    const oldAmount = transaction.amount
-    const oldCategoryId = transaction.category_id
-    const userId = transaction.user_id
+    const oldAmount = obj.amount
+    const oldCategory = obj.category_id
+    const oldDate = obj.date
 
-    if (category_id) transaction.category_id = category_id
-    if (amount !== undefined) transaction.amount = amount
-    if (note !== undefined) transaction.note = note
-    if (date) transaction.date = date
+    if (category_id) obj.category_id = category_id
+    if (amount !== undefined) obj.amount = amount
+    if (note !== undefined) obj.note = note
+    if (date) obj.date = date
 
-    await transaction.save()
+    await obj.save()
 
-    if (transaction.type === "EXPENSE" || transaction.type === "INCOME") {
-      const newAmount = Number(transaction.amount)
+    if (obj.type === "EXPENSE" || obj.type === "INCOME") {
+      const oldYM = getYearMonth(oldDate)
+      const newYM = getYearMonth(obj.date)
 
-      // 🔻 Decrease spent from OLD category
-      const oldBudget = await Budget.findOne({
-        user_id: userId,
-        category_id: oldCategoryId,
-      })
+      await Budget.findOneAndUpdate(
+        {
+          user_id: obj.user_id,
+          category_id: oldCategory,
+          year: oldYM.year,
+          month: oldYM.month,
+        },
+        { $inc: { spent: -oldAmount } }
+      )
 
-      if (oldBudget) {
-        oldBudget.spent = Math.max(0, oldBudget.spent - oldAmount)
-        await oldBudget.save()
-      }
-
-      // 🔺 Increase spent in NEW category
-      const newBudget = await Budget.findOne({
-        user_id: userId,
-        category_id: transaction.category_id,
-      })
-
-      if (newBudget) {
-        newBudget.spent += newAmount
-        await newBudget.save()
-      }
+      await Budget.findOneAndUpdate(
+        {
+          user_id: obj.user_id,
+          category_id: obj.category_id,
+          year: newYM.year,
+          month: newYM.month,
+        },
+        { $inc: { spent: obj.amount } }
+      )
     }
 
     return res.json({
       message: "Transaction updated successfully",
-      transaction: transaction,
+      transaction: obj,
     })
   } catch (err) {
     console.error("Update Error:", err)
     return res.status(500).json({ message: "Error updating transaction" })
   }
 }
-
 
 export const deleteTransaction = async (req: Request, res: Response) => {
   try {
