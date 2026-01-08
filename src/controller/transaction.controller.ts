@@ -243,13 +243,14 @@ export const updateTransaction = async (req: Request, res: Response) => {
     const { id } = req.params
     const { category_id, amount, note, date } = req.body
 
-    if (!mongoose.isValidObjectId(id))
+    if (!mongoose.isValidObjectId(id)) 
       return res.status(400).json({ message: "Invalid transaction ID" })
 
     const tx = await Transaction.findById(id)
-    if (!tx || !tx.category_id)
-      return res.status(404).json({ message: "Transaction not found" })
+    if (!tx || !tx.category_id || !tx.user_id)
+      return res.status(404).json({ message: "Transaction not found or missing fields" })
 
+    // Save old values
     const oldAmount = Number(tx.amount)
     const oldCategoryId = tx.category_id.toString()
 
@@ -262,38 +263,28 @@ export const updateTransaction = async (req: Request, res: Response) => {
     await tx.save()
 
     if (tx.type === "EXPENSE" || tx.type === "INCOME") {
-      if (!tx.category_id) {
-        return res.status(400).json({ message: "Transaction has no category" })
-      }
-
       const newAmount = Number(tx.amount)
-      const oldCategoryId = tx.category_id.toString()  // now safe
-      const newCategoryId = tx.category_id.toString()  // after updates
+      const newCategoryId = tx.category_id.toString()
 
-      // Remove from old category
+      // Remove old amount
       await Budget.findOneAndUpdate(
         { user_id: tx.user_id, category_id: oldCategoryId },
-        { $inc: { spent: -Number(tx.amount) } }
+        { $inc: { spent: -oldAmount } }
       )
 
-      // Add to new category
+      // Add new amount
       await Budget.findOneAndUpdate(
         { user_id: tx.user_id, category_id: newCategoryId },
         { $inc: { spent: newAmount } }
       )
     }
 
-
-    return res.json({
-      message: "Transaction updated successfully",
-      transaction: tx,
-    })
+    return res.json({ message: "Transaction updated successfully", transaction: tx })
   } catch (err) {
     console.error("Update Error:", err)
     return res.status(500).json({ message: "Error updating transaction" })
   }
 }
-
 
 
 // export const deleteTransaction = async (req: Request, res: Response) => {

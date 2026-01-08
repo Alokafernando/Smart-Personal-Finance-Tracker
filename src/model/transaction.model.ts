@@ -3,7 +3,7 @@ import mongoose, { Document, Schema } from "mongoose"
 export interface ITransaction extends Document {
     _id: mongoose.Types.ObjectId
     user_id: mongoose.Types.ObjectId
-    category_id?: mongoose.Types.ObjectId
+    category_id: mongoose.Types.ObjectId
     amount: number
     date: Date
     type: "INCOME" | "EXPENSE"
